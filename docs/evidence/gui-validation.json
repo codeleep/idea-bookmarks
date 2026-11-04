@@ -1,0 +1,68 @@
+{
+  "date": "2026-11-04",
+  "officialIdeaVersion": "2026.2.4",
+  "officialIdeaBuild": "262.11879.100",
+  "pluginVersion": "262.11879.100.2",
+  "archiveSha256": "83fd3f7749ef4e1f0472f8db9a628daca4a9a477c10f400a27d0be7e1387638e",
+  "installation": "ZIP extracted into isolated user plugins directory; official plugin-manager disk install was previously verified for baseline .1",
+  "baselineEvidence": "gui-baseline-262.11879.100.1.json",
+  "ideInstallationModified": false,
+  "observations": {
+    "customPluginLoadedAfterRestart": "PASS",
+    "threeLevelHierarchyRestored": "PASS",
+    "createSubgroupDialogAndAction": "PASS",
+    "moveGroupTreePickerAndAction": "PASS",
+    "nestedLineBookmarkNavigation": "PASS: caret 6:1 -> 1:1",
+    "rawMarkdownRestoredInNativeEditor": "PASS",
+    "nativeMarkdownHighlightAndJcefPreview": "PASS: heading, bold, list, Java code, table, link",
+    "nativeEditUpdatesBookmarkAndToolWindow": "PASS",
+    "nativeUndoUpdatesBookmark": "PASS",
+    "fullUnicodeAndMultilineMarkdownOnDisk": "PASS",
+    "projectHasNoGeneratedMarkdownFile": true,
+    "severeEventsSinceFinalStartup": 0
+  },
+  "restoredBookmarkGroupPath": [
+    "project",
+    "New List (1)",
+    "New List"
+  ],
+  "restoredMarkdownCharacters": 176,
+  "installedJars": [
+    {
+      "jar": "platform-bookmarks-plugin/lib/modules/intellij.platform.bookmarks.jar",
+      "sha256": "34b386d86db24150d8635ae1f73850971fdb39721dd14da81d79d2fc49f3e81d",
+      "matchesGuiInstalled": true
+    },
+    {
+      "jar": "platform-bookmarks-plugin/lib/modules/intellij.platform.debugger.impl.bookmarks.jar",
+      "sha256": "a32c8f0c5d155d9132dc63f62a70e4a227f0c382dd2197bfc2627ec39f376999",
+      "matchesGuiInstalled": true
+    },
+    {
+      "jar": "platform-bookmarks-plugin/lib/modules/intellij.platform.vcs.log.impl.bookmarks.jar",
+      "sha256": "4f020170267145acb66c6e872e016f25f69158756c00c6e2a8049191214f6b5f",
+      "matchesGuiInstalled": true
+    },
+    {
+      "jar": "platform-bookmarks-plugin/lib/platform-bookmarks-plugin.jar",
+      "sha256": "7a1bc2809d931a2745ca3b7fc97c4e1298e1f913391528a1cb4ed6b18b653d43",
+      "matchesGuiInstalled": true
+    }
+  ],
+  "nativePreviewLog": [
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: the main editor has been set",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: attachHtmlPanel",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: updateHtml",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: readAction finished",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: setContent length: 1607, offset: 0, line: 0",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: setContent finished",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: updateHtml",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: readAction finished",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: setContent length: 1679, offset: 186, line: 17",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: setContent finished",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: updateHtml",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: readAction finished",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: setContent length: 1607, offset: 0, line: 0",
+    "#org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor$Companion - MarkdownPreviewFileEditor: setContent finished"
+  ]
+}

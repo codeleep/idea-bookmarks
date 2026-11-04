@@ -1,0 +1,50 @@
+PASS plugin registered
+PASS development version selected
+PASS plugin loaded from isolated user directory
+PASS project service created
+PASS implementation from installed ZIP
+PASS virtual file found
+PASS file bookmark and group creation
+PASS mnemonic lookup
+PASS plain description retained
+PASS group rename
+PASS bookmarks removed
+PASS original bookmark state restored
+PASS three-level hierarchy and same names in separate branches
+PASS duplicate sibling rejected
+PASS parent and child relationships
+PASS preorder matches displayed hierarchy
+PASS rename preserves child identity
+PASS cycles and self-parenting rejected
+PASS move with sibling name collision rejected
+PASS subtree reparented
+PASS reparent preserves descendants
+PASS Markdown description added in nested group
+PASS multiline Unicode Markdown stored without loss
+PASS line bookmark added to deep group
+PASS Markdown headings lists code tables and links rendered
+PASS preview sanitizes active HTML and automatic image loads
+PASS tree displays single-line Markdown summary
+PASS description uses native Markdown file type without a project file
+PASS repeated editing reuses the same description buffer
+PASS bundled Markdown split editor provider accepts description buffer
+PASS native Markdown document contains the original description
+PASS native editor changes save to the correct nested bookmark
+PASS native document restores Markdown without losing formatting
+PASS nested bookmark restored from XML
+PASS hierarchy IDs survive XML serialization
+PASS Markdown survives XML serialization
+PASS nested default group retained
+PASS actual tool-window tree contains nested groups
+PASS nested group selection visitor works beyond fixed depth
+PASS selection traverses ancestor groups
+PASS bookmark selection supports arbitrary nesting
+PASS line-bookmark popup retains ancestor groups of nested line bookmarks
+PASS deleting a group removes its subtree
+PASS subtree deletion preserves bookmarks in other branches
+PASS old flat bookmark migrated
+PASS old flat list remains a root group
+PASS legacy description preserved exactly
+PASS damaged hierarchy retains all groups
+PASS missing and self parents recovered as roots
+PASS persisted cycles repaired

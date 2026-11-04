@@ -1,0 +1,938 @@
+{
+  "repository": "https://github.com/JetBrains/intellij-community",
+  "version": "2026.2.4",
+  "build": "262.11879.100",
+  "tag": "idea/262.11879.100",
+  "commit": "32cd543bd4ee8e36118f392f28d07da04078849d",
+  "date": "2026-11-04",
+  "missingDeclaredModules": [
+    "intellij.platform.frontend.split.bookmarks"
+  ],
+  "files": [
+    {
+      "path": "LICENSE.txt",
+      "bytes": 7563,
+      "sha256": "3f382c8820a51e4d1e22b2f50408a52eb6fe6cfff36bcf8a8dfe104df00251a3"
+    },
+    {
+      "path": "NOTICE.txt",
+      "bytes": 110,
+      "sha256": "2262ebb5abcd81ca9d05581c37ad2ebbb9d431115fce1b23a5812b414415ebff"
+    },
+    {
+      "path": "build.txt",
+      "bytes": 18,
+      "sha256": "821f23285b587cb2ee884328b348598afb887c8015a4ff2417cffff37115a22e"
+    },
+    {
+      "path": "java/java-bookmarks/BUILD.bazel",
+      "bytes": 2055,
+      "sha256": "a0b18553c15961b402f4f9bd30ed18444015b8585d749f956754b6917f39138a"
+    },
+    {
+      "path": "java/java-bookmarks/intellij.java.bookmarks.iml",
+      "bytes": 2221,
+      "sha256": "8eff596dbaf4687918f72f382df1b6dca6c487fccdd2efedd32f6f657bea542d"
+    },
+    {
+      "path": "java/java-bookmarks/resources/intellij.java.bookmarks.xml",
+      "bytes": 498,
+      "sha256": "68b5310fd22592a67d02f5f06b412248157212ff10f573fa68db49af6d4ee81e"
+    },
+    {
+      "path": "java/java-bookmarks/src/com/intellij/java/bookmarks/PackageBookmark.kt",
+      "bytes": 1702,
+      "sha256": "47a835a5218170cc4e45fbca204a3a4a6031b3925c79574b94c28d5f4116198f"
+    },
+    {
+      "path": "java/java-bookmarks/src/com/intellij/java/bookmarks/PackageBookmarkProvider.kt",
+      "bytes": 1799,
+      "sha256": "f6fe7b09c9652acfc670c51a3ec3a9666fe6d7dce7ad148606451a16012ea7cc"
+    },
+    {
+      "path": "java/java-bookmarks/src/com/intellij/java/bookmarks/PackageNode.kt",
+      "bytes": 962,
+      "sha256": "6e0144d5bf4b05dd913e501dde62782efaee076e73e8e76e79a2694bb55c8fe6"
+    },
+    {
+      "path": "platform/bookmarks/BUILD.bazel",
+      "bytes": 3446,
+      "sha256": "3540e5764f8b24cfef32c001f8b564218ac2ef9b7c053e0f1cd5072595191ae2"
+    },
+    {
+      "path": "platform/bookmarks/api-dump.txt",
+      "bytes": 6876,
+      "sha256": "49811aff56124fa683b7c32093fca39bd0e93f79e840e9224c3ea942b9d998db"
+    },
+    {
+      "path": "platform/bookmarks/backend/BUILD.bazel",
+      "bytes": 2293,
+      "sha256": "ca6fdca61099e097713459233de1f7b94c185c73acd31effa168a521f4f79cb9"
+    },
+    {
+      "path": "platform/bookmarks/backend/api-dump.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "platform/bookmarks/backend/intellij.platform.bookmarks.backend.iml",
+      "bytes": 2355,
+      "sha256": "7b897f9c7bc791e8c8aaae242f6db7b90f827e2579c8ca272cd8ca6d66243694"
+    },
+    {
+      "path": "platform/bookmarks/backend/module-content.yaml",
+      "bytes": 117,
+      "sha256": "bf09a142e39194038638e511cbc350ce15cd00aadc7b434b5a9489d720bdb11f"
+    },
+    {
+      "path": "platform/bookmarks/backend/resources/intellij.platform.bookmarks.backend.xml",
+      "bytes": 858,
+      "sha256": "fdb61d91cb765e25cdf9435b143cbf1249150079faa12ff90a079912a2e02253"
+    },
+    {
+      "path": "platform/bookmarks/backend/src/BookmarksApiImpl.kt",
+      "bytes": 1086,
+      "sha256": "12e523ff8fdd3ec2c012f90f7e8fd362aecc5c77eb314f365a6d4a59bea261d9"
+    },
+    {
+      "path": "platform/bookmarks/backend/src/BookmarksServiceProvider.kt",
+      "bytes": 525,
+      "sha256": "b715c63f3ad2674f1a72b160be06f379a00e2b03192792b7b042dae35b29df0e"
+    },
+    {
+      "path": "platform/bookmarks/frontend/BUILD.bazel",
+      "bytes": 2308,
+      "sha256": "54c06816ed73be117aba15202c219b8a82061d4c2a259b8296a3258d225b1998"
+    },
+    {
+      "path": "platform/bookmarks/frontend/api-dump.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "platform/bookmarks/frontend/intellij.platform.bookmarks.frontend.iml",
+      "bytes": 2341,
+      "sha256": "3dbfd7f6a39cb5cefe6d84fc431e47e4d53de5896a3c2750c409e895b8441a3a"
+    },
+    {
+      "path": "platform/bookmarks/frontend/module-content.yaml",
+      "bytes": 119,
+      "sha256": "4c736f5abee050a9c2302ca468941ea508fe2265d4439968c4f4261848606fd5"
+    },
+    {
+      "path": "platform/bookmarks/frontend/resources/intellij.platform.bookmarks.frontend.xml",
+      "bytes": 833,
+      "sha256": "a93aab3db027f20d22979b2f5ac9478d9f2d59edb7662b63b25f56485aa04234"
+    },
+    {
+      "path": "platform/bookmarks/frontend/src/LineBookmarkListener.kt",
+      "bytes": 2070,
+      "sha256": "141da611b13f7ebddb631e8afb8dc0393c51763ad4603ce1acc021a95679ad68"
+    },
+    {
+      "path": "platform/bookmarks/intellij.platform.bookmarks.iml",
+      "bytes": 3447,
+      "sha256": "ac56332670448c8e26cc9cb16f5f7616e554a5d512295467bb7944ab29d84bc8"
+    },
+    {
+      "path": "platform/bookmarks/module-content.yaml",
+      "bytes": 101,
+      "sha256": "44a090775f8276953739fdd1c4b26d390bb9b26b433c291a923beb1d9860d05c"
+    },
+    {
+      "path": "platform/bookmarks/plugin/BUILD.bazel",
+      "bytes": 1022,
+      "sha256": "3eab5d01a7d5572e8977f9125bd7544434f411dc057f831931e1dfb3bfb86d16"
+    },
+    {
+      "path": "platform/bookmarks/plugin/intellij.platform.bookmarks.plugin.iml",
+      "bytes": 429,
+      "sha256": "1251711af0b5660fd8971ffee199690b0c3851ad206edb83137cff6415cc4815"
+    },
+    {
+      "path": "platform/bookmarks/plugin/plugin-content.yaml",
+      "bytes": 556,
+      "sha256": "4a5b72dd1b89a45a575b02799e96b2a29492b72bc0d18dc3c563d388b13e61f5"
+    },
+    {
+      "path": "platform/bookmarks/plugin/resources/META-INF/plugin.xml",
+      "bytes": 909,
+      "sha256": "23141e05eaa133acd18257a387c3988fa8e7d273e978489948b86b4b66bf4500"
+    },
+    {
+      "path": "platform/bookmarks/resources/intellij.platform.bookmarks.xml",
+      "bytes": 17563,
+      "sha256": "b09681c4c73ea5725aac9e6fdf15129a71bddeca5ecaf72ba027f0285581449d"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/BookmarkBranchChangeListener.kt",
+      "bytes": 734,
+      "sha256": "734b4734ea9919b57fd8850afcfb3bdefa93d5c52146237daf845fb86c4d0b18"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/BookmarkBundle.java",
+      "bytes": 1129,
+      "sha256": "87d6ea2e27ea5c34fd8b9066c0657260b558a3a1a62fd6d1d635f76db7810321"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/BookmarkOccurrence.kt",
+      "bytes": 3327,
+      "sha256": "4f9bb6a6be2681ed6cd64caaa2d89116a9b4108e1fabf1674ac35c15670973d7"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/BookmarksListProviderService.kt",
+      "bytes": 1437,
+      "sha256": "57d4857847c7828e66fcf88d9af510a506bc280b04373ff326a74d0e63157041"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/BookmarksManagerImpl.kt",
+      "bytes": 29960,
+      "sha256": "3a756db9d2a010c2b173dd05f50db7ed853e770bc2bac12ce7987268fcf51271"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/BookmarksStartupActivity.kt",
+      "bytes": 739,
+      "sha256": "a462c7315e82252111eb24c492311ec3f75ee560f975b8a7b63142670d040c1f"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/GutterLineBookmarkRenderer.kt",
+      "bytes": 4882,
+      "sha256": "421d181b65dd09257b15e102aefa528d6a8b111cfede6c61dd8c2777a06802ff"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/GutterLineBookmarkUpdater.kt",
+      "bytes": 1058,
+      "sha256": "203a131ad8b0058e31a3d4d389ac18d0d4c717449355c31a4b03ce8218c9cf85"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ModificationNotifier.kt",
+      "bytes": 2533,
+      "sha256": "005631a553d0a4b0a0f5f7d10d65361d0507402f130155209ddbc150a546792d"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/AddAnotherBookmarkAction.kt",
+      "bytes": 1192,
+      "sha256": "8d1ad500b0e71a14dac48eba239c6d4706277b0bfb4ec32535c0575cba342910"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/AskBeforeDeletingListsToggleAction.kt",
+      "bytes": 778,
+      "sha256": "866decc0c32a7f3714e6b436f5aa20f78145c8ca6e2f5f74739500a67cff3d63"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/BookmarkOpenTabsAction.kt",
+      "bytes": 1839,
+      "sha256": "3fc15834e95e06e5f17d5b3db42c74002f0d09ee8735911d0af3aea7463d8aab"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/BookmarkTypeChooser.kt",
+      "bytes": 10150,
+      "sha256": "d3234e4b4e64e7c77d267bcc6e952464370187ddc5eda63fcfc0f94839354a31"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/BookmarksDeleteProvider.kt",
+      "bytes": 1448,
+      "sha256": "d0a9677b65aae3ff9b10752c4ab058dd34ea4dd385c448a04bd0a274c6fe2eb3"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/ChooseBookmarkTypeAction.kt",
+      "bytes": 2677,
+      "sha256": "60f2b0505d3be2a7cb7242681d53b7e3281a2a39a69b324467bd784a5b9256fa"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/DeleteBookmarkTypeAction.kt",
+      "bytes": 1129,
+      "sha256": "d0fef0c93dcb849f475d1475fc3f8b23449df45c61c2508215dc5ee9abc6254b"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/EditBookmarkAction.kt",
+      "bytes": 1697,
+      "sha256": "eb3b2539f4cb1d1acbc1985ef14c4df94c7094ec900f01a8c585bcc64de9d162"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/GotoBookmarkTypeAction.kt",
+      "bytes": 4345,
+      "sha256": "20b39f39937de0d175bfecfe05ccf59f2a518dbee2695d0bc59fa164d7d292c7"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/GroupCreateAction.kt",
+      "bytes": 974,
+      "sha256": "69e13b3630795808d4186594f0dc505a50da7837000a2ac4fd596b045118ebf8"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/NextBookmarkInEditor.kt",
+      "bytes": 2760,
+      "sha256": "01df724a754f6a1bdc35d1359cf0d7e5de291d455292b780a118778cf469384b"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/NextBookmarkService.kt",
+      "bytes": 3714,
+      "sha256": "5fafdc1089f4b3dfe906c862b70f768870c0bbde8acefb681a399926ab8cffe7"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/NodeChooseTypeAction.kt",
+      "bytes": 2333,
+      "sha256": "0135f375847603203ebb4b47d61849fddcf784e3bba6f01bd9e938e8db44bab0"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/NodeDeleteAction.kt",
+      "bytes": 4858,
+      "sha256": "abe3ff8a489fe59e94735edf42d9dadbcbaade2aa697d4583334acdec5708e20"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/NodeDeleteTypeAction.kt",
+      "bytes": 1350,
+      "sha256": "4b2730a59e84c725d8217cc4ae2407a6b6d0a028cea6d398e16a4f6e6a0e8fdf"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/NodeEditAction.kt",
+      "bytes": 1298,
+      "sha256": "2daacc981c3a900e26bdc01a130eb25126b9cfbc43f5cfb054198adeda9ff706"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/NodeMoveAction.kt",
+      "bytes": 3064,
+      "sha256": "700849048f171a79b256070af634608176c8636808f68cb0d907a79f18616c71"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/OpenBookmarkedFilesAction.kt",
+      "bytes": 965,
+      "sha256": "c41e674cd0a72ecd080790291c5fae8b772dd7af0394e8bc90872890832bd332"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/RewriteBookmarkTypeToggleAction.kt",
+      "bytes": 777,
+      "sha256": "62a39c17fd351bfadcbd77dd09c1a7ac479f506cfc19a166046106cb3861b11f"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/ShowLineBookmarksAction.kt",
+      "bytes": 2167,
+      "sha256": "a9dbcdf3d75f383280bb89ccdaa94549b6ac522f9bc102cd02014e21680025a6"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/ShowTypeBookmarksAction.kt",
+      "bytes": 4988,
+      "sha256": "fcaab27c8f256833444c7f039dc79f905349bcaec930889b65a074b99cabf87a"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/SortGroupBookmarksAction.kt",
+      "bytes": 1407,
+      "sha256": "58c84616c20e6ef3c339a83bb6a4566ea37c4b819810718db01fc871d17f9ba9"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/ToggleBookmarkAction.kt",
+      "bytes": 3733,
+      "sha256": "21534fabee0a1ead8baa310565bd168a9ae27fd9695070044db4108bc3b317c2"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/ToggleBookmarkTypeAction.kt",
+      "bytes": 4472,
+      "sha256": "a6fb0ef2dfa54a08c3fad07227260054b218c502a18584f8935b2046c4ca9c49"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/ToggleDefaultGroupAction.kt",
+      "bytes": 978,
+      "sha256": "f13fd642872c825a9f17f463b4386b592a22df1d481788d4a6bd40828606cc2f"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/ViewToggleAction.kt",
+      "bytes": 1059,
+      "sha256": "dcd4121f865b3c0eceff76321f49b8ade7dc85de55e5c48aacffac037badcf9d"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/extensions.kt",
+      "bytes": 6159,
+      "sha256": "f738b526031d6a20da2f08cc48d42b737e92a6e12ea1b68d77a8a23f24bb5f91"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/actions/package-info.java",
+      "bytes": 228,
+      "sha256": "56710af6db09c6e18a8194413ecdef52cbef19e87d672552406144ab01f777c9"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/providers/FileBookmarkImpl.kt",
+      "bytes": 1731,
+      "sha256": "4afa11399fe195579f952aa6e9a9b436b3f6f632dbca685eb1d91584f0ed6bf1"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/providers/InvalidBookmark.kt",
+      "bytes": 1242,
+      "sha256": "eb1559f2f186033900d7b671176198571d96e1bf46ccf87366eab01ebff26f23"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/providers/InvalidNode.kt",
+      "bytes": 2343,
+      "sha256": "c699ad6c3abf513819363594f80282f3e6d30588a705bdd62db9e838f180c167"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/providers/LineBookmarkImpl.kt",
+      "bytes": 2337,
+      "sha256": "5702b8905d7d39f523ba2b1aa1271ada8a2141241262cfe4e1ec5c7ae2e48376"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/providers/LineBookmarkProvider.kt",
+      "bytes": 23235,
+      "sha256": "d32a41983d60111967493d28bc9703618774abdbe9c7b84a744702b60f68f588"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/providers/ModuleBookmark.kt",
+      "bytes": 1711,
+      "sha256": "ad3f61cc0c1e9266b9e44f1275d3d2eefaeea5c386ac013e04bdc41ad7f65e0f"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/providers/ModuleBookmarkProvider.kt",
+      "bytes": 2138,
+      "sha256": "77c41211b46371c00a4e6568fb1b3fed6f08e4821428ccfc367055b14bf57aa6"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/providers/ModuleNode.kt",
+      "bytes": 1030,
+      "sha256": "f91dcedfcdff7c464a3cd5f64a4fbdc6c48264685ef02c3ed12fffe9571a53ea"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/providers/RootTypeBookmark.kt",
+      "bytes": 1624,
+      "sha256": "7fef995d1b3337ddb0e439f1eab63cc3b3078ff8154ac57d83ede08f54bd2e03"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/providers/RootTypeBookmarkProvider.kt",
+      "bytes": 1166,
+      "sha256": "9e52981957ddd236b198cc0164965a02049817f238dc1e00b8bc49bec8d62efe"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/providers/RootTypeNode.kt",
+      "bytes": 1246,
+      "sha256": "e5b5721e026b4aa96f0529661e0c05c3e703a3e9fd23f3589a923c951b391fb1"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/state.kt",
+      "bytes": 1035,
+      "sha256": "5539643ca085d40f6da91ba936912032de1e17f0a20a91744cf5f1e4443e43f2"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/BookmarkRenameDialog.kt",
+      "bytes": 1924,
+      "sha256": "1bc83f6266ce73c564a6966f44b6c3ad14b853041a9739f03a3c73db45469c71"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/BookmarksSelectInTarget.kt",
+      "bytes": 2053,
+      "sha256": "8ca1940743d3392ab0a7689b584d10fa116b49bc269203754b46dedf6e80a677"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/BookmarksView.kt",
+      "bytes": 13485,
+      "sha256": "fd30229c085b6b6f4d6e5bd44eceb9c449795f99a44139ad41854090de292a67"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/BookmarksViewFactory.kt",
+      "bytes": 2009,
+      "sha256": "747b63e7ef3ef5aeb5522e11f254ebfcbe455500a5b5a749c7c7eca773d4dc2a"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/BookmarksViewState.kt",
+      "bytes": 1559,
+      "sha256": "ba65192e7006493a1faad5cb82cdf6cd3395fa26cbd8c2df5ce5d4bd4fbed1a0"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/ContextMenuActionGroup.kt",
+      "bytes": 2169,
+      "sha256": "8d61298ccbff133455a594684fd80ffbad8a066d69a87176a59ddda9eab5c098"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/DragAndDropHandler.kt",
+      "bytes": 6592,
+      "sha256": "4cdb55ce41adcf23e1a259f03a956ad8b7628482e93c9782808b7a16edeeab02"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/GroupBookmarkVisitor.kt",
+      "bytes": 1213,
+      "sha256": "663fe330970c9429497019f06de53953fa6774795ed4e320009acf6d3404d2ba"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/GroupCreateDialog.kt",
+      "bytes": 1349,
+      "sha256": "4b35ffad6f6bf99f7f33c261230d855f28e4cd4b95be795845b7f57011acae28"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/GroupInputDialog.kt",
+      "bytes": 1920,
+      "sha256": "71d12987c6b0f731ee299160dc5936d33fa3838e2fd65cdb2e1689690ea50a02"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/GroupInputValidator.kt",
+      "bytes": 1656,
+      "sha256": "4f7fb77eb325aa047eeb8e2a216161b6f806193e30406bd995fbd4307f33711e"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/GroupRenameDialog.kt",
+      "bytes": 1145,
+      "sha256": "76e3fc1278876981b80a95af8c33aec4172479ee09fb0263749c6824287e1f21"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/GroupSelectDialog.kt",
+      "bytes": 2401,
+      "sha256": "fbad1b89fc28e8d04df016bc735fca802f552f66acfcea8b64ad821e3b938761"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/IdeViewForBookmarksView.kt",
+      "bytes": 1502,
+      "sha256": "edaa0604d9387dcb83380c03484bc59daf7c150d8d86a3c9886ef146b83092a7"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/extensions.kt",
+      "bytes": 4695,
+      "sha256": "8f3484e8161938225b3aa9a6cf3cf3fc93ce834cb7af0adbe1fcf3b406b75123"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/package-info.java",
+      "bytes": 223,
+      "sha256": "0ee5a3cf64865d96c62cb4c1cad5720b0907e07d7a3e108d157284587b49da76"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/BookmarkListProvider.kt",
+      "bytes": 2902,
+      "sha256": "4472ee321fcc9a9d3a889f3337a1a62899e004fee66ea2e7aac07e82dc91a019"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/BookmarkNode.kt",
+      "bytes": 4342,
+      "sha256": "61b5fc6a56885f3379291f69ed512e083f1366fc4bbec6330a170d51de39def7"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/BookmarksTreeStructure.kt",
+      "bytes": 1459,
+      "sha256": "b749b01fce773e7b8a3519cc7a17ffc60a7a6fb9dbf870f2961387533bb68a7e"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/FileNode.kt",
+      "bytes": 1096,
+      "sha256": "14abc305aae061169fdc564e0e52500e9e5913aa9f6f8b4eced3b65e24fbc32b"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/FolderNode.kt",
+      "bytes": 1082,
+      "sha256": "2f801d3084a47bda511d12597629b7224ffdc89c2dcbb497592e43f9300484c8"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/FolderNodeComparator.kt",
+      "bytes": 906,
+      "sha256": "23a62f4e118e6e4690415bd9a84e3477d07c4e5be4469239cbed9fc7d5eecdd5"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/FolderNodeUpdater.kt",
+      "bytes": 2166,
+      "sha256": "a3509a327fbb5c1c99c0a68e79b48aa46953410b7b59599d3f805156c3e42dce"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/GroupListProvider.kt",
+      "bytes": 1556,
+      "sha256": "233e8779940abe43685ebe7f90a461f7339698463ffad0a1d4d6f46694e3dfc4"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/GroupNode.kt",
+      "bytes": 2147,
+      "sha256": "00cc192d7a78ed298de89c9e4678994f56532439a61488ebbb16ef26ccfd2022"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/LineNode.kt",
+      "bytes": 1300,
+      "sha256": "00d1ff956fd9a4c26235f81b48b92268aa75ebe23069fa5b6737a02f9c8b890d"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/RootNode.kt",
+      "bytes": 1525,
+      "sha256": "660c9a93b7dd84713b9db11157fa946aec7e12fdde46115f2d59269e25d705a7"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/VirtualFileVisitor.kt",
+      "bytes": 1156,
+      "sha256": "2c62085a432d16738604e813d674950e46375b537ed56f9690bad9cb34c67c22"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmark/ui/tree/extensions.kt",
+      "bytes": 4201,
+      "sha256": "16162f42e7fb6e22ab783ffc38135708e56fea17b3b060b14c6d731522df56ea"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmarks/Bookmark.java",
+      "bytes": 13366,
+      "sha256": "98086d39182cfcf9cf2f05fec20b9a5b935f6c05956d942433aa415648871792"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmarks/BookmarkBundle.java",
+      "bytes": 1130,
+      "sha256": "faf91ba75870a4b3fc980cd4bf993e87685f2002c55e5114dde7bed673c28b37"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmarks/BookmarkItem.java",
+      "bytes": 4442,
+      "sha256": "ba97c096368e2099313e8855cdde864c5b95563fe7f570073dde8a7d759b3a53"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmarks/BookmarkManager.java",
+      "bytes": 20863,
+      "sha256": "38f5f72e31d71da67ae4d7fdf59f98db24b715501e483ae8d90dd50d03cb9d55"
+    },
+    {
+      "path": "platform/bookmarks/src/com/intellij/ide/bookmarks/BookmarksListener.java",
+      "bytes": 580,
+      "sha256": "ff2d3b5413413085f00b350e385a805593c9966adfdd023fbaea3a723fdf53db"
+    },
+    {
+      "path": "platform/bookmarks/src/rpc/BookmarksApi.kt",
+      "bytes": 782,
+      "sha256": "574d0e08b731cbb3703e4b82c7b89de9371d381e69149b29b57a3ae7459052d8"
+    },
+    {
+      "path": "platform/bookmarks/src/rpc/package-info.java",
+      "bytes": 108,
+      "sha256": "ff1d5346cf8736b5e716ad0d510d9bcdcd84774ce843822c66303291135cb70b"
+    },
+    {
+      "path": "platform/favoritesTreeView/src/com/intellij/ide/favoritesTreeView/AbstractUrlBookmarkProvider.kt",
+      "bytes": 933,
+      "sha256": "e6b4e9a30fc541b405cd6d6327e73d874b5088d19a1bddc50ecd2bcd7ae6491b"
+    },
+    {
+      "path": "platform/icons/src/expui/bookmarks/addBookmarksList.svg",
+      "bytes": 831,
+      "sha256": "6b4e8967f9c822b6c8e87dd55e843ba89e0db6065d64bd16a0c2ecab7df7a2da"
+    },
+    {
+      "path": "platform/icons/src/expui/bookmarks/addBookmarksList_dark.svg",
+      "bytes": 831,
+      "sha256": "5db8a709bb710169c2c790dee51bdfe299f1a713bbaa63b6bfa89aebe7e43743"
+    },
+    {
+      "path": "platform/icons/src/expui/bookmarks/bookmark.svg",
+      "bytes": 469,
+      "sha256": "672f9aa96bb563d6e8434a26af7808b5b12d06d72aa6c7c0065e7cb39e21b72e"
+    },
+    {
+      "path": "platform/icons/src/expui/bookmarks/bookmark_dark.svg",
+      "bytes": 469,
+      "sha256": "369e8268af711c1766d972214a0def2a7ba9b5cb38941c76251b026b81dd6f8a"
+    },
+    {
+      "path": "platform/icons/src/expui/bookmarks/bookmarksList.svg",
+      "bytes": 728,
+      "sha256": "123fc3476668585119916919935cd8dd13e69a2eec21e737afba77d7cff36c79"
+    },
+    {
+      "path": "platform/icons/src/expui/bookmarks/bookmarksList_dark.svg",
+      "bytes": 728,
+      "sha256": "dec8c85fafe4372e8d6c9c7d32deb48c02ae27a45e4406ed5913522cd0a6147c"
+    },
+    {
+      "path": "platform/icons/src/expui/bookmarks/mnemonic.svg",
+      "bytes": 318,
+      "sha256": "9a05e0208236eef1d284da7483f2e480351f5940d97329ae2cfe3338eb8e2409"
+    },
+    {
+      "path": "platform/icons/src/expui/bookmarks/mnemonic_dark.svg",
+      "bytes": 318,
+      "sha256": "ccbe008bfa178e13211a8019d8cc9556b796b8ef0bd8cdc1cf5928dd9989db6d"
+    },
+    {
+      "path": "platform/icons/src/expui/gutter/bookmark.svg",
+      "bytes": 472,
+      "sha256": "25efdf739cd3e0d2314bddbcc0ae78bff14204f0e2b77e2af3ff95c99587f8d6"
+    },
+    {
+      "path": "platform/icons/src/expui/gutter/bookmark_dark.svg",
+      "bytes": 472,
+      "sha256": "d64c4f40664e6ae2af3c4681f056016bf0dc8ee298f1008698fa6f989d821069"
+    },
+    {
+      "path": "platform/icons/src/expui/toolwindows/bookmarks.svg",
+      "bytes": 726,
+      "sha256": "9c8db98c5c151d93280c3c779dd305e3d7f1e92db395bc7f470313eefce55c39"
+    },
+    {
+      "path": "platform/icons/src/expui/toolwindows/bookmarks@20x20.svg",
+      "bytes": 689,
+      "sha256": "09698ba51fd97f11761786e8fa161e52ce90632d006f8234cd5644cf82a55c9a"
+    },
+    {
+      "path": "platform/icons/src/expui/toolwindows/bookmarks@20x20_dark.svg",
+      "bytes": 689,
+      "sha256": "501d9505ca40c53cfdfd2ad660d519b0ada083688b901cb4c5919e584ede4d1d"
+    },
+    {
+      "path": "platform/icons/src/expui/toolwindows/bookmarks_dark.svg",
+      "bytes": 726,
+      "sha256": "50ffa19d6dc3bfa2379cf36f67aea9bc928993159a05e724107391f96829c5e3"
+    },
+    {
+      "path": "platform/icons/src/gutter/bookmark.svg",
+      "bytes": 287,
+      "sha256": "cd740f8b8fa5dcc4d4d10e7d3d8267c84284e35b8e835f3976a5fab411c98e21"
+    },
+    {
+      "path": "platform/icons/src/gutter/bookmark_dark.svg",
+      "bytes": 287,
+      "sha256": "af925b2511a39dd9f7cb95d661bb2f9eb415a3afd43ba216bbdcbc38dcd00a60"
+    },
+    {
+      "path": "platform/icons/src/nodes/bookmark.svg",
+      "bytes": 282,
+      "sha256": "caf4699bf18d4a9b5761ba720921665d881acf7036409e454a5a692209930b71"
+    },
+    {
+      "path": "platform/icons/src/nodes/bookmarkGroup.svg",
+      "bytes": 444,
+      "sha256": "a873ed4fdb4f3f183307a6d54d46e088d0bd499cbf927b96b9c555c524f980cc"
+    },
+    {
+      "path": "platform/icons/src/nodes/bookmark_dark.svg",
+      "bytes": 282,
+      "sha256": "f98adf08373714c92b417dc3a17551e68982fdccb89e24287d5fd917c42b26a3"
+    },
+    {
+      "path": "platform/icons/src/toolwindows/toolWindowBookmarks.svg",
+      "bytes": 321,
+      "sha256": "6a24f3e510a2bc4e1cdd6730821f1dcfaa43cc468ff9cbf8dbeb4da2b79ee0a5"
+    },
+    {
+      "path": "platform/icons/src/toolwindows/toolWindowBookmarks_dark.svg",
+      "bytes": 321,
+      "sha256": "6979711696be4fafb9ca5d28ed17d142c6731e8b3550cdc135bb441ca7824a96"
+    },
+    {
+      "path": "platform/lang-api/resources/messages/BookmarkBundle.properties",
+      "bytes": 4484,
+      "sha256": "f8ac3f096de564d5629f5eeaa9bcdbdab4e4ccf4360c3c4eff253534954463eb"
+    },
+    {
+      "path": "platform/lang-api/src/com/intellij/ide/bookmark/Bookmark.kt",
+      "bytes": 1262,
+      "sha256": "d7cc346a8e4f3ef26c4243d7169aaf1044cfd81642aaeb41ddbfdf877b30943d"
+    },
+    {
+      "path": "platform/lang-api/src/com/intellij/ide/bookmark/BookmarkGroup.kt",
+      "bytes": 919,
+      "sha256": "46d87190df73327fce49d2d1b54a742879378854b5b8bad309ee11b75cbb0e29"
+    },
+    {
+      "path": "platform/lang-api/src/com/intellij/ide/bookmark/BookmarkProvider.java",
+      "bytes": 1022,
+      "sha256": "4f1c07af7cc2887674510d7778fb9023bd1768819c06f64eeac98b819005ada6"
+    },
+    {
+      "path": "platform/lang-api/src/com/intellij/ide/bookmark/BookmarkType.kt",
+      "bytes": 4125,
+      "sha256": "e4dcba3236e31514b7bb8679e44c64de22a0ce638e93ac2a3a8b72b3c452a1ee"
+    },
+    {
+      "path": "platform/lang-api/src/com/intellij/ide/bookmark/BookmarksListProvider.java",
+      "bytes": 1433,
+      "sha256": "93330e7ecfadb82c4fe0f678f962948a1a204a18d7e8ad3c68a4ba949f7e8ce2"
+    },
+    {
+      "path": "platform/lang-api/src/com/intellij/ide/bookmark/BookmarksListener.java",
+      "bytes": 1274,
+      "sha256": "2bc07858a5a8ad48a4f8fb1f210b237d7690f9c47262cf2298b70688cc211741"
+    },
+    {
+      "path": "platform/lang-api/src/com/intellij/ide/bookmark/BookmarksManager.java",
+      "bytes": 2157,
+      "sha256": "7075b6f7c50ce3f99913115cf73067f7d2cdfd3e7cde43b1772d15a74a068add"
+    },
+    {
+      "path": "platform/lang-api/src/com/intellij/ide/bookmark/FileBookmark.kt",
+      "bytes": 301,
+      "sha256": "c9bc87258f8b14b87d57c4be21e92add08ea2bd1468d838b217a3d31230a49bb"
+    },
+    {
+      "path": "platform/lang-api/src/com/intellij/ide/bookmark/FileBookmarksListener.kt",
+      "bytes": 790,
+      "sha256": "928aa939edddb58ff6c54954ca07854eae0f49bddf0b47ea4ac53dede08ac40a"
+    },
+    {
+      "path": "platform/lang-api/src/com/intellij/ide/bookmark/LineBookmark.kt",
+      "bytes": 252,
+      "sha256": "97f9e22e591bb6b3e27cb404abe5a43b26d8aa280e75f7f50d7050cf5f060e60"
+    },
+    {
+      "path": "platform/lang-impl/src/com/intellij/internal/statistic/BookmarkUsagesFUSCollector.kt",
+      "bytes": 3034,
+      "sha256": "d66ff2609f9c728e72d957fcd8e95743a2b49ae6609c6ca682728ea76619a96d"
+    },
+    {
+      "path": "platform/platform-resources-en/src/messages/ActionsBundle.properties",
+      "bytes": 183690,
+      "sha256": "61102d11f839238f2ba66de398ec4d19ce0ac9affe17427ee7ad1f4610f0590a"
+    },
+    {
+      "path": "platform/platform-resources/src/META-INF/LangExtensionPoints.xml",
+      "bytes": 61529,
+      "sha256": "0dfb93b53d6015a1d5359259875c1cb6354429de48bd849cf4c37864b82c9e3a"
+    },
+    {
+      "path": "platform/platform-resources/src/META-INF/LangExtensions.xml",
+      "bytes": 146184,
+      "sha256": "91c4defcf35a5543df08e32d5fb3d1482ba97175f356bf3ee1af470677cc06cf"
+    },
+    {
+      "path": "platform/platform-resources/src/META-INF/PlatformExtensions.xml",
+      "bytes": 179124,
+      "sha256": "7d514a0b441804fafd38491fb9477c5b4c142390edbce88444e60e025b8e1b3c"
+    },
+    {
+      "path": "platform/platform-resources/src/keymaps/$default.xml",
+      "bytes": 46292,
+      "sha256": "b2a38677e7fedae28a422194685eedb182c6f7d4d7cb0381cae753cf431cc97a"
+    },
+    {
+      "path": "platform/platform-resources/src/keymaps/Default for KDE.xml",
+      "bytes": 3593,
+      "sha256": "d8e5ca7739be74d3d82d6cf0c05dadebed9f84d6d371ff63526ff9f2091ef06f"
+    },
+    {
+      "path": "platform/platform-resources/src/keymaps/Emacs.xml",
+      "bytes": 13084,
+      "sha256": "195f1dfbb4626b6d6398e5cc4ba9111d477d58c83b87c563f51d130a0ab490ad"
+    },
+    {
+      "path": "platform/platform-resources/src/keymaps/Mac OS X 10.5+.xml",
+      "bytes": 27043,
+      "sha256": "c15f4ddcacbf58359818e5182a2e6274df9b2062436251f0efd41b2ebd8f99cc"
+    },
+    {
+      "path": "platform/platform-resources/src/keymaps/Mac OS X.xml",
+      "bytes": 18420,
+      "sha256": "f98fdcba5763d0da18a6ef303be90691d1e5f5452402244ed8c1cb69932e3617"
+    },
+    {
+      "path": "platform/platform-resources/src/keymaps/Sublime Text (Mac OS X).xml",
+      "bytes": 12114,
+      "sha256": "6e2fb3ec7eea2c62164440913a20446a29dfdb126e229fd8a7ff0fcac4cd7e3f"
+    },
+    {
+      "path": "platform/platform-resources/src/keymaps/Sublime Text.xml",
+      "bytes": 10464,
+      "sha256": "035efd484696be8ac0980e13fbcaed52fe0ef0ce645b974607085f1da404c529"
+    },
+    {
+      "path": "platform/platform-resources/src/keymaps/macOS System Shortcuts.xml",
+      "bytes": 13169,
+      "sha256": "8ad566fe91bc6835d554a74afd8d9bdf246a0590c56d9f38b3decb9c1595547f"
+    },
+    {
+      "path": "platform/platform-tests/testSrc/com/intellij/ide/bookmark/IconsTest.kt",
+      "bytes": 1008,
+      "sha256": "39370f4464f3fb501d8efde1e9e48558fbb656f1fde0674234bb83d289cca1c7"
+    },
+    {
+      "path": "platform/platform-tests/testSrc/com/intellij/ide/bookmarks/BookmarkManagerTest.java",
+      "bytes": 41589,
+      "sha256": "725012373a7be530fa8ec53a5ed933a03e6a8efafce22e12ddc51591098799d2"
+    },
+    {
+      "path": "platform/platform-tests/testSrc/com/intellij/ide/bookmarks/MigrationTest.kt",
+      "bytes": 1237,
+      "sha256": "db3eb6bbe02804092389859f1ccdc10faa0ec8c8c829c64ba254d003bbb52e5f"
+    },
+    {
+      "path": "platform/remote-driver/test-sdk/src/com/intellij/driver/sdk/ui/components/common/toolwindows/BookmarksUi.kt",
+      "bytes": 2691,
+      "sha256": "a38802767ce9ffe738e0ca01855c5fe141d2522aeebc28b86f1001b99b1db13d"
+    },
+    {
+      "path": "platform/tasks-platform-impl/tasks.impl.bookmarks/BUILD.bazel",
+      "bytes": 2090,
+      "sha256": "783a804ffa51050a17747c5915c6419a8bd8c261f05c493470d63f9497a9c43b"
+    },
+    {
+      "path": "platform/tasks-platform-impl/tasks.impl.bookmarks/api-dump.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "platform/tasks-platform-impl/tasks.impl.bookmarks/intellij.platform.tasks.impl.bookmarks.iml",
+      "bytes": 1222,
+      "sha256": "c57416453b55b7711eb187b8dd8747441a8605169e5023258699eb28293f56af"
+    },
+    {
+      "path": "platform/tasks-platform-impl/tasks.impl.bookmarks/module-content.yaml",
+      "bytes": 123,
+      "sha256": "66d150e7bcd113a1b057c6dd9ee5a5f942dc415b67482d18851554dee849c60e"
+    },
+    {
+      "path": "platform/tasks-platform-impl/tasks.impl.bookmarks/resources/intellij.platform.tasks.impl.bookmarks.xml",
+      "bytes": 684,
+      "sha256": "1b3dfba313cb746576d48c55a871d4e4429b2f999fe584280a7825889e3ac84b"
+    },
+    {
+      "path": "platform/tasks-platform-impl/tasks.impl.bookmarks/src/BookmarkContextProvider.java",
+      "bytes": 4361,
+      "sha256": "30eee09a02231c5b11e9914cfc521c58db9eb65657344c0b886d1dab156d4b3f"
+    },
+    {
+      "path": "platform/vcs-log/impl/bookmarks/BUILD.bazel",
+      "bytes": 2630,
+      "sha256": "085e13ad9c7b6d79fe56c2df4274c5e065bda831478f2d9a8c90322d20d714fd"
+    },
+    {
+      "path": "platform/vcs-log/impl/bookmarks/api-dump.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "platform/vcs-log/impl/bookmarks/intellij.platform.vcs.log.impl.bookmarks.iml",
+      "bytes": 2618,
+      "sha256": "a0089fa9dd9c7ebf0a384d1fd6832ceba3c35381063677885108c6e0ced6bd7a"
+    },
+    {
+      "path": "platform/vcs-log/impl/bookmarks/resources/intellij.platform.vcs.log.impl.bookmarks.xml",
+      "bytes": 1406,
+      "sha256": "4d354087610725bf277df305b2bf539109a50579d88621bb6e53c53218fad89b"
+    },
+    {
+      "path": "platform/vcs-log/impl/bookmarks/src/com/intellij/platform/vcs/log/impl/bookmarks/VcsLogBookmarkProvider.kt",
+      "bytes": 7173,
+      "sha256": "36384ed74d7037321c8f93de1238ccde9b2434fd8e79b0591879a102603e2c57"
+    },
+    {
+      "path": "platform/vcs-log/impl/src/com/intellij/vcs/log/ui/VcsLogBookmarkSupport.kt",
+      "bytes": 1565,
+      "sha256": "5468a7d94b488aac695e0e922d59827a5114ec1830f08e2cc8f73bd56bbfad1b"
+    },
+    {
+      "path": "platform/vcs-log/impl/src/com/intellij/vcs/log/ui/render/BookmarkIcon.java",
+      "bytes": 1964,
+      "sha256": "1624f21a1f989e7739498ae5a031a55215d7976f443f1f020bc21291efc8889d"
+    },
+    {
+      "path": "platform/xdebugger-impl/bookmarks/BUILD.bazel",
+      "bytes": 3006,
+      "sha256": "9f554c519dca188cc5b0dcf13de75a9902114cffd52332a9bd9e66d159a8f4a3"
+    },
+    {
+      "path": "platform/xdebugger-impl/bookmarks/api-dump.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "platform/xdebugger-impl/bookmarks/intellij.platform.debugger.impl.bookmarks.iml",
+      "bytes": 2856,
+      "sha256": "4f032e50ac03caad755eb16314d614a068ae6f9929d8bdf6a7f77f9d9eb11ad6"
+    },
+    {
+      "path": "platform/xdebugger-impl/bookmarks/resources/intellij.platform.debugger.impl.bookmarks.xml",
+      "bytes": 1163,
+      "sha256": "39ac66156fec07a9aa9d686883bb508ac870784711853f3232b603e13b6a81bd"
+    },
+    {
+      "path": "platform/xdebugger-impl/bookmarks/src/com/intellij/platform/debugger/impl/bookmarks/BreakpointListProvider.kt",
+      "bytes": 9068,
+      "sha256": "4a6970476d338e1961478580bf2905d963b086587f1ad6de4b51e4bef6ccadb1"
+    },
+    {
+      "path": "plugins/tasks/tasks-tests/test/com/intellij/tasks/context/BookmarkContextTest.java",
+      "bytes": 8971,
+      "sha256": "ae5a44f3922de7a457e963c7941a6be4dacd366d54d44f8285c4667e470d3613"
+    }
+  ]
+}

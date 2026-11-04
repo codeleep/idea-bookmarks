@@ -1,0 +1,30 @@
+{
+  "result": "PASS",
+  "method": "Extract the delivered source ZIP into a clean directory, verify original sources, compile using the same official SDK, compare every built JAR entry with the delivered plugin",
+  "sdkBuild": "262.11879.100",
+  "pluginVersion": "262.11879.100.2",
+  "pluginSha256": "83fd3f7749ef4e1f0472f8db9a628daca4a9a477c10f400a27d0be7e1387638e",
+  "originalSourcesVerified": 185,
+  "jars": [
+    {
+      "jar": "platform-bookmarks-plugin/lib/modules/intellij.platform.bookmarks.jar",
+      "entries": 260,
+      "allClassesAndResourcesMatch": true
+    },
+    {
+      "jar": "platform-bookmarks-plugin/lib/modules/intellij.platform.debugger.impl.bookmarks.jar",
+      "entries": 11,
+      "allClassesAndResourcesMatch": true
+    },
+    {
+      "jar": "platform-bookmarks-plugin/lib/modules/intellij.platform.vcs.log.impl.bookmarks.jar",
+      "entries": 10,
+      "allClassesAndResourcesMatch": true
+    },
+    {
+      "jar": "platform-bookmarks-plugin/lib/platform-bookmarks-plugin.jar",
+      "entries": 3,
+      "allClassesAndResourcesMatch": true
+    }
+  ]
+}

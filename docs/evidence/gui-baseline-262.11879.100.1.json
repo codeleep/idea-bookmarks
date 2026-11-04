@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-04",
+  "officialIdeaVersion": "2026.2.4",
+  "officialIdeaBuild": "262.11879.100",
+  "pluginVersion": "262.11879.100.1",
+  "archiveSha256": "7d2cd0696b8d824166985b3aa240a2423531223274dfc5b5887cd8086fde2adf",
+  "installViaOfficialPluginManager": "PASS",
+  "customPluginLoadedAfterRestart": "PASS",
+  "lineBookmarkCreated": "PASS",
+  "toolWindowDisplayed": "PASS",
+  "navigationCaretBefore": "6:1",
+  "navigationCaretAfter": "1:1",
+  "bookmarkRestoredAfterExitAndRestart": "PASS",
+  "userPluginDirectoryUsed": true,
+  "ideInstallationModified": false,
+  "compiledJarEntriesMatchGuiInstalledPackage": [
+    {
+      "jar": "intellij.platform.bookmarks.jar",
+      "sameEntries": true,
+      "entries": 243
+    },
+    {
+      "jar": "intellij.platform.debugger.impl.bookmarks.jar",
+      "sameEntries": true,
+      "entries": 11
+    },
+    {
+      "jar": "intellij.platform.vcs.log.impl.bookmarks.jar",
+      "sameEntries": true,
+      "entries": 10
+    }
+  ],
+  "pluginDescriptorSemanticsMatchGuiInstalledPackage": true
+}

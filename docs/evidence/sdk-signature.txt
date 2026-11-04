@@ -1,0 +1,4 @@
+Official IntelliJ IDEA 2026.2.4.app: valid on disk
+Official IntelliJ IDEA 2026.2.4.app: satisfies its Designated Requirement
+Command: codesign --verify --deep --strict --verbose=2
+Exit code: 0

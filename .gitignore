@@ -1,0 +1,9 @@
+.cache/
+upstream/
+build/
+dist/
+.idea/
+.gradle/
+/*.iml
+__pycache__/
+.DS_Store

@@ -1,0 +1,50 @@
+plugins {
+    id 'base'
+}
+
+// The implementation uses IntelliJ internal APIs. Compile with the Kotlin and
+// Java compilers shipped in the exact official SDK, without rebuilding the IDE.
+def ideaHome = providers.gradleProperty('ideaHome')
+        .orElse(providers.environmentVariable('BOOKMARKS_IDEA_HOME'))
+        .orElse(layout.projectDirectory.dir('.cache/IntelliJ IDEA 2026.2.4.app').asFile.absolutePath)
+
+tasks.register('buildPlugin', Exec) {
+    group = 'bookmarks'
+    description = 'Compile the editable Bookmarks modules and produce the installable ZIP'
+    commandLine 'python3', 'tools/build.py', '--idea-home', ideaHome.get()
+}
+
+tasks.register('verifyOriginalSources', Exec) {
+    group = 'verification'
+    description = 'Verify the official source snapshot against its pinned SHA-256 manifest'
+    commandLine 'python3', 'tools/verify_sources.py'
+}
+
+tasks.register('smokeTest', Exec) {
+    group = 'verification'
+    description = 'Load the ZIP in an unmodified official IDE with isolated user directories'
+    dependsOn 'buildPlugin'
+    commandLine 'python3', 'tools/runtime_smoke.py', '--idea-home', ideaHome.get()
+}
+
+tasks.register('setupIdea', Exec) {
+    group = 'bookmarks'
+    description = 'Generate local IntelliJ project metadata and SDK classpath'
+    commandLine 'python3', 'tools/setup_ide.py', '--idea-home', ideaHome.get()
+}
+
+tasks.register('runIde', Exec) {
+    group = 'bookmarks'
+    description = 'Start the official IDE in a development sandbox with the source-built plugin'
+    dependsOn 'buildPlugin'
+    commandLine 'python3', 'tools/run_ide.py', '--idea-home', ideaHome.get()
+}
+
+tasks.register('sourceZip', Exec) {
+    group = 'distribution'
+    description = 'Package the development project, original sources, and verification records'
+    commandLine 'python3', 'tools/package_sources.py'
+}
+
+tasks.named('build') { dependsOn 'buildPlugin' }
+tasks.named('check') { dependsOn 'verifyOriginalSources' }
