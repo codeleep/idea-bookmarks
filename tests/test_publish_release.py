@@ -10,7 +10,7 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from ci_build import sha256
-from publish_release import validate_assets, publish
+from publish_release import validate_assets, publish, find_release
 
 VERSION = "262.11879.100.2"
 COMMIT = "a" * 40
@@ -71,43 +71,53 @@ class ReleaseTests(unittest.TestCase):
             api.assert_not_called()
 
     def test_published_version_is_never_overwritten(self):
-        with patch("publish_release.api", return_value=self.published), patch("publish_release.gh") as command:
+        with patch("publish_release.find_release", return_value=self.published), patch("publish_release.gh") as command:
             self.assertEqual(self.published, self.call_publish())
             command.assert_not_called()
 
     def test_incomplete_published_release_is_not_overwritten(self):
         incomplete = {**self.published, "assets": []}
-        with patch("publish_release.api", return_value=incomplete), patch("publish_release.gh") as command:
+        with patch("publish_release.find_release", return_value=incomplete), patch("publish_release.gh") as command:
             with self.assertRaisesRegex(ValueError, "incomplete"):
                 self.call_publish()
             command.assert_not_called()
 
     def test_existing_tag_cannot_be_retargeted(self):
-        with patch("publish_release.api", side_effect=[None, {"object": {}}, {"sha": "b" * 40}]), patch("publish_release.gh") as command:
+        with patch("publish_release.find_release", return_value=None), patch("publish_release.api", side_effect=[{"object": {}}, {"sha": "b" * 40}]), patch("publish_release.gh") as command:
             with self.assertRaisesRegex(ValueError, "another commit"):
                 self.call_publish()
             command.assert_not_called()
 
-    def test_existing_draft_for_another_commit_is_preserved(self):
-        draft = {"draft": True, "target_commitish": "b" * 40}
-        with patch("publish_release.api", side_effect=[draft, None]), patch("publish_release.gh") as command:
-            with self.assertRaisesRegex(ValueError, "another commit"):
-                self.call_publish()
-            command.assert_not_called()
+    def test_existing_untagged_draft_can_follow_verified_commit(self):
+        draft = {"id": 123, "draft": True, "target_commitish": "b" * 40}
+        with patch("publish_release.find_release", return_value=draft), patch("publish_release.api", side_effect=[None, self.uploaded, self.published]) as api, patch("publish_release.gh") as command:
+            self.assertEqual(self.published, self.call_publish())
+            self.assertEqual(["edit", "upload", "edit"], [call.args[1] for call in command.call_args_list])
+            self.assertIn("--target", command.call_args_list[0].args)
+            self.assertEqual("repos/owner/repo/releases/123", api.call_args_list[1].args[0])
+
+    def test_draft_is_found_when_by_tag_endpoint_returns_not_found(self):
+        draft = {"id": 123, "draft": True, "tag_name": f"v{VERSION}"}
+        with patch("publish_release.api", side_effect=[None, [draft]]) as api:
+            self.assertEqual(draft, find_release("owner/repo", f"v{VERSION}"))
+            self.assertIn("releases?", api.call_args_list[1].args[0])
 
     def test_upload_digest_failure_leaves_release_unpublished(self):
         self.uploaded["assets"][0]["digest"] = "sha256:incorrect"
-        with patch("publish_release.api", side_effect=[None, None, self.uploaded]), patch("publish_release.gh") as command:
+        draft = {"id": 123, "draft": True}
+        with patch("publish_release.find_release", side_effect=[None, draft]), patch("publish_release.api", side_effect=[None, self.uploaded]), patch("publish_release.gh") as command:
             with self.assertRaisesRegex(ValueError, "digest mismatch"):
                 self.call_publish()
             self.assertEqual(["create", "upload"], [call.args[1] for call in command.call_args_list])
 
     def test_new_release_is_published_only_after_asset_verification(self):
-        with patch("publish_release.api", side_effect=[None, None, self.uploaded, self.published]), patch("publish_release.gh") as command:
+        draft = {"id": 123, "draft": True}
+        with patch("publish_release.find_release", side_effect=[None, draft]), patch("publish_release.api", side_effect=[None, self.uploaded, self.published]) as api, patch("publish_release.gh") as command:
             self.assertEqual(self.published, self.call_publish())
             self.assertEqual(["create", "upload", "edit"], [call.args[1] for call in command.call_args_list])
             self.assertIn("--draft", command.call_args_list[0].args)
             self.assertIn("--draft=false", command.call_args_list[-1].args)
+            self.assertEqual("repos/owner/repo/releases/123", api.call_args_list[1].args[0])
 
 
 if __name__ == "__main__":

@@ -28,6 +28,22 @@ def api(path, optional=False):
     return value
 
 
+def find_release(repo, tag):
+    release = api(f"repos/{repo}/releases/tags/{tag}", optional=True)
+    if release:
+        return release
+    # GitHub's by-tag endpoint excludes drafts whose Git tag is not created yet.
+    page = 1
+    while True:
+        releases = api(f"repos/{repo}/releases?per_page=100&page={page}")
+        for candidate in releases:
+            if candidate["tag_name"] == tag:
+                return candidate
+        if len(releases) < 100:
+            return None
+        page += 1
+
+
 def validate_assets(directory, version):
     plugin = directory / f"bookmarks-desktop-{version}.zip"
     sources = directory / f"idea-bookmarks-{version}-sources.zip"
@@ -65,8 +81,7 @@ def publish(repo, target, ref, assets, notes, version):
     tag = f"v{version}"
     if ref.startswith("refs/tags/") and ref != f"refs/tags/{tag}":
         raise ValueError(f"Tag must match plugin.xml version: {tag}")
-    endpoint = f"repos/{repo}/releases/tags/{tag}"
-    release = api(endpoint, optional=True)
+    release = find_release(repo, tag)
     required = {path.name for path in assets}
     if release and not release["draft"]:
         if not required.issubset({asset["name"] for asset in release["assets"]}):
@@ -76,11 +91,18 @@ def publish(repo, target, ref, assets, notes, version):
     tagged = api(f"repos/{repo}/git/ref/tags/{tag}", optional=True)
     if tagged and api(f"repos/{repo}/commits/{tag}")["sha"] != target:
         raise ValueError(f"Existing tag {tag} points to another commit; tags will not be moved")
-    if release and not tagged and release.get("target_commitish") != target:
-        raise ValueError(f"Existing draft {tag} belongs to another commit; increment the version or resolve the draft first")
     if not release:
         gh("release", "create", tag, "--repo", repo, "--target", target, "--draft",
            "--title", f"Bookmarks {version}", "--notes-file", str(notes))
+        release = find_release(repo, tag)
+        if not release or not release["draft"]:
+            raise ValueError("Could not find the newly created draft release")
+    else:
+        # An unpublished draft without a Git tag may safely follow a newer verified commit.
+        extra = ("--target", target) if not tagged else ()
+        gh("release", "edit", tag, "--repo", repo, "--notes-file", str(notes),
+           "--title", f"Bookmarks {version}", *extra)
+    endpoint = f"repos/{repo}/releases/{release['id']}"
     # Only unpublished drafts can be resumed or replaced on a retry.
     gh("release", "upload", tag, *map(str, assets), "--repo", repo, "--clobber")
     uploaded = api(endpoint)
