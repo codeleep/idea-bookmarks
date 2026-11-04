@@ -9,7 +9,7 @@ def package():
     destination = ROOT / f"dist/idea-bookmarks-{PLUGIN_VERSION}-sources.zip"
     destination.parent.mkdir(exist_ok=True)
     folders = ["modules", "official", "plugin", "tools", "tests", "docs", "gradle", ".github"]
-    files = ["README.md", "NOTICE.txt", "LICENSE", "LICENSE-APACHE-2.0.txt", "source-manifest.json",
+    files = ["README.md", "AGENTS.md", "NOTICE.txt", "LICENSE", "LICENSE-APACHE-2.0.txt", "source-manifest.json",
              "build.gradle", "settings.gradle", "gradlew", "gradlew.bat", ".gitignore"]
     selected = [ROOT / name for name in files if (ROOT / name).is_file()]
     for folder in folders:

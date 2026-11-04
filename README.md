@@ -98,11 +98,13 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 3. 构建验证通过后自动创建对应版本的 Release，在 Summary 的版本下载链接或 Releases 中下载安装包。
 4. 在 IDEA 中执行 **Install Plugin from Disk**，直接选择这个 ZIP，然后重启。
 
-默认分支推送新版本也会自动构建并发布；版本标签为 `v` 加 `plugin/plugin.xml` 中的版本号。已经发布的同版本不会被覆盖，更新功能后需要递增版本号。Release 附件保留在对应版本页面。
+PR 合入 `main` 后会自动构建并发布新版本；版本标签为 `v` 加 `plugin/plugin.xml` 中的版本号。已经发布的同版本不会被覆盖，更新功能后需要递增版本号。Release 附件保留在对应版本页面。
 
 插件 ZIP 采用原文件上传，下载后无需解压。`idea-bookmarks-版本号-sources.zip` 是源码包；`bookmarks-build-reports` 包含校验值和本轮运行报告。下载 Actions 产物需要登录 GitHub，默认保留 30 天。
 
-工作流会自动下载并校验固定版本的官方 Linux x64 SDK，使用它自带的编译器，完成原始源码校验、三个插件模块编译、IDE 进程内检查和源码归档。推送到 `main`、`master`、`codex/**` 分支或 `v*` 标签，以及 Pull Request 也会触发构建。详细配置和复现命令见 [CI 使用说明](docs/CI.md)。
+工作流会自动下载并校验固定版本的官方 Linux x64 SDK，使用它自带的编译器，完成原始源码校验、三个插件模块编译、IDE 进程内检查和源码归档。推送到 `main`、`feature/**`、`fixbug/**` 分支或 `v*` 标签，以及面向 `main` 的 Pull Request 会触发构建。详细配置和复现命令见 [CI 使用说明](docs/CI.md)。
+
+默认分支为 `main`，禁止直接推送，管理员也必须通过 PR。新功能使用 `feature/<名称>`，缺陷修复使用 `fixbug/<名称>`；PR 通过分支命名与安装包构建检查后合入。协作约定见 [AGENTS.md](AGENTS.md)。
 
 ## 6. 安装到官方 IDEA
 

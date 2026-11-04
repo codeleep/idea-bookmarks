@@ -8,9 +8,10 @@ on:
         type: boolean
         default: true
   push:
-    branches: [main, master, 'codex/**']
+    branches: [main, 'feature/**', 'fixbug/**']
     tags: ['v*']
   pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -20,8 +21,36 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  branch-policy:
+    name: Validate branch policy
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require feature or fixbug branches for pull requests
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SOURCE_REF: ${{ github.ref }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          event = os.environ['EVENT_NAME']
+          ref = os.environ['SOURCE_REF']
+          if event == 'pull_request':
+              branch = os.environ['HEAD_BRANCH']
+          elif ref == 'refs/heads/main' or ref.startswith('refs/tags/v'):
+              print('Main branch or release tag: allowed')
+              raise SystemExit(0)
+          else:
+              branch = ref.removeprefix('refs/heads/')
+          if not re.fullmatch(r'(feature|fixbug)/.+', branch):
+              raise SystemExit('Branch must be named feature/<name> or fixbug/<name>')
+          print(f'Branch policy passed: {branch}')
+          PY
+
   build:
     name: Build and verify installable ZIP
+    needs: branch-policy
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     outputs:

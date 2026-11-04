@@ -74,7 +74,7 @@ python3 tools/ci_build.py
 
 ## 5. 维护约定
 
-修改插件功能后，在 `plugin/plugin.xml` 中递增版本并推送到默认分支。工作流会从描述文件读取版本、命名 ZIP 并自动创建对应 Release。手动推送版本标签时，标签必须与描述文件匹配；例如当前版本使用 `v262.11879.100.6`。
+修改插件功能后，在 `feature/<名称>` 或 `fixbug/<名称>` 分支中修改 `plugin/plugin.xml` 的版本号，并提交面向 `main` 的 PR。检查通过、PR 合入后，工作流从描述文件读取版本、命名 ZIP 并自动创建对应 Release。手动推送版本标签时，标签必须与描述文件匹配；例如当前版本使用 `v262.11879.100.6`。
 
 升级 SDK 时，更新 `.github/idea-sdk.json` 中的版本、构建号、下载地址和官方 SHA-256，并同步 `plugin/plugin.xml` 的兼容范围及构建参数。脚本会检查锁定构建号与描述文件的一致性，避免使用错误 SDK 生成安装包。
 
@@ -85,3 +85,13 @@ python3 -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
 在 Linux 上运行 IDE 内检查时，从 SDK 的 `product-info.json` 读取匹配系统与 CPU 架构的启动配置及 VM options 路径，兼容 Linux 的 `idea64.vmoptions` 和 macOS 的 `idea.vmoptions`。
+
+## 6. 默认分支与合并规则
+
+仓库默认展示 `main`。GitHub 服务端对 `main` 启用 PR、状态检查、禁止强推和禁止删除的规则，未设置绕过人员，管理员也不能直接推送。
+
+开发分支使用 `feature/<名称>` 或 `fixbug/<名称>`。仓库规则拒绝其他命名分支的创建和更新；已有旧分支保留，但不再更新。来自其他仓库的 PR 也需要通过分支命名检查。
+
+PR 必须通过 `Validate branch policy` 和 `Build and verify installable ZIP`，并基于最新 `main` 验证。要求使用 PR，但未额外要求他人审批，单人维护也可在检查通过后合并。功能分支和 PR 仅构建，合入 `main` 后才进入默认分支发布流程。
+
+规则定义保存在 `.github/rulesets/main.json` 和 `.github/rulesets/branch-names.json`；修改文件本身不会自动改变 GitHub 设置，维护规则时需要同步服务端配置。AI 和其他代码工具应先读取根目录 [AGENTS.md](../AGENTS.md)。
