@@ -105,19 +105,31 @@ class ReleaseTests(unittest.TestCase):
     def test_upload_digest_failure_leaves_release_unpublished(self):
         self.uploaded["assets"][0]["digest"] = "sha256:incorrect"
         draft = {"id": 123, "draft": True}
-        with patch("publish_release.find_release", side_effect=[None, draft]), patch("publish_release.api", side_effect=[None, self.uploaded]), patch("publish_release.gh") as command:
+        with patch("publish_release.find_release", return_value=None), patch("publish_release.api", side_effect=[None, draft, self.uploaded]), patch("publish_release.gh") as command:
             with self.assertRaisesRegex(ValueError, "digest mismatch"):
                 self.call_publish()
-            self.assertEqual(["create", "upload"], [call.args[1] for call in command.call_args_list])
+            self.assertEqual(["upload"], [call.args[1] for call in command.call_args_list])
 
     def test_new_release_is_published_only_after_asset_verification(self):
         draft = {"id": 123, "draft": True}
-        with patch("publish_release.find_release", side_effect=[None, draft]), patch("publish_release.api", side_effect=[None, self.uploaded, self.published]) as api, patch("publish_release.gh") as command:
+        with patch("publish_release.find_release", return_value=None) as find, patch("publish_release.api", side_effect=[None, draft, self.uploaded, self.published]) as api, patch("publish_release.gh") as command:
             self.assertEqual(self.published, self.call_publish())
-            self.assertEqual(["create", "upload", "edit"], [call.args[1] for call in command.call_args_list])
-            self.assertIn("--draft", command.call_args_list[0].args)
+            self.assertEqual(["upload", "edit"], [call.args[1] for call in command.call_args_list])
+            find.assert_called_once()  # No eventually consistent lookup after creation.
+            self.assertEqual({"tag_name": f"v{VERSION}", "target_commitish": COMMIT,
+                              "draft": True, "name": f"Bookmarks {VERSION}",
+                              "body": self.notes.read_text()}, api.call_args_list[1].kwargs["payload"])
             self.assertIn("--draft=false", command.call_args_list[-1].args)
-            self.assertEqual("repos/owner/repo/releases/123", api.call_args_list[1].args[0])
+            self.assertEqual("repos/owner/repo/releases/123", api.call_args_list[2].args[0])
+
+    def test_create_payload_is_sent_as_json_stdin(self):
+        from publish_release import api
+        from subprocess import CompletedProcess
+        payload = {"draft": True, "body": "first line\nsecond `line` $(literal)"}
+        with patch("publish_release.subprocess.run", return_value=CompletedProcess([], 0, '{"id":123,"draft":true}', "")) as run:
+            self.assertEqual({"id": 123, "draft": True}, api("repos/owner/repo/releases", payload=payload))
+            self.assertEqual(payload, json.loads(run.call_args.kwargs["input"]))
+            self.assertEqual(["gh", "api", "repos/owner/repo/releases", "--method", "POST", "--input", "-"], run.call_args.args[0])
 
 
 if __name__ == "__main__":

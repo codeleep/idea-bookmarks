@@ -18,7 +18,7 @@ GitHub 要求带 `workflow_dispatch` 的工作流存在于默认分支，页面�
 
 在 [版本列表](https://github.com/codeleep/idea-bookmarks/releases) 中选择版本，或打开 [最新版本](https://github.com/codeleep/idea-bookmarks/releases/latest)。每个 Release 的 Assets 包含可安装 ZIP、完整源码 ZIP、`SHA256SUMS`、构建报告和 IDE 内运行报告。这些附件保留在对应 Release 中，不受 Actions 产物 30 天保留期影响。
 
-发布先创建草稿并上传附件，确认上传大小与 GitHub 返回的校验值后再公开。重复构建已发布版本时保留原附件；发布新代码请递增版本号。已有版本标签不会移动，失败重试可更新尚未创建 Git 标签的未公开草稿到本轮已验证提交。发布接口使用 GitHub CLI 的 [创建](https://cli.github.com/manual/gh_release_create)、[上传](https://cli.github.com/manual/gh_release_upload) 和 [公开草稿](https://cli.github.com/manual/gh_release_edit) 命令。
+发布先创建草稿并上传附件，确认上传大小与 GitHub 返回的校验值后再公开。重复构建已发布版本时保留原附件；发布新代码请递增版本号。已有版本标签不会移动，失败重试可更新尚未创建 Git 标签的未公开草稿到本轮已验证提交。通过 GitHub API 创建草稿时直接使用响应中的 Release ID，避免新建后按标签或列表查询的同步延迟；随后使用 GitHub CLI 的 [上传](https://cli.github.com/manual/gh_release_upload) 和 [公开草稿](https://cli.github.com/manual/gh_release_edit) 命令。
 
 每次成功构建也保留以下 Actions 产物，默认保留 30 天。下载 Actions 产物需要登录 GitHub。
 

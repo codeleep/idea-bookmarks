@@ -18,8 +18,12 @@ def gh(*args):
     return subprocess.check_output(["gh", *args], text=True).strip()
 
 
-def api(path, optional=False):
-    result = subprocess.run(["gh", "api", path], text=True, capture_output=True)
+def api(path, optional=False, payload=None):
+    command = ["gh", "api", path]
+    if payload is not None:
+        command.extend(["--method", "POST", "--input", "-"])
+    result = subprocess.run(command, text=True, capture_output=True,
+                            input=json.dumps(payload) if payload is not None else None)
     value = json.loads(result.stdout) if result.stdout.strip() else {}
     if result.returncode:
         if optional and str(value.get("status")) == "404":
@@ -92,11 +96,13 @@ def publish(repo, target, ref, assets, notes, version):
     if tagged and api(f"repos/{repo}/commits/{tag}")["sha"] != target:
         raise ValueError(f"Existing tag {tag} points to another commit; tags will not be moved")
     if not release:
-        gh("release", "create", tag, "--repo", repo, "--target", target, "--draft",
-           "--title", f"Bookmarks {version}", "--notes-file", str(notes))
-        release = find_release(repo, tag)
-        if not release or not release["draft"]:
-            raise ValueError("Could not find the newly created draft release")
+        # Use the creation response: draft tag/list queries can lag behind writes.
+        release = api(f"repos/{repo}/releases", payload={
+            "tag_name": tag, "target_commitish": target, "draft": True,
+            "name": f"Bookmarks {version}", "body": notes.read_text(),
+        })
+        if not release or not release.get("id") or not release.get("draft"):
+            raise ValueError("GitHub did not return a newly created draft release")
     else:
         # An unpublished draft without a Git tag may safely follow a newer verified commit.
         extra = ("--target", target) if not tagged else ()
