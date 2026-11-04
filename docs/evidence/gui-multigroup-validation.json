@@ -1,0 +1,46 @@
+{
+  "date": "2026-11-04",
+  "sdkVersion": "2026.2.4",
+  "sdkBuild": "262.11879.100",
+  "pluginVersion": "262.11879.100.3",
+  "localArchiveSha256": "6a3b4f5c5bd4db7ff9c9ab8a3dab7398b3bd2a108e0a1f2c829e9369769b923c",
+  "method": "Final ZIP loaded from isolated user plugins by unmodified official IDEA; native GUI interaction and exit/restart",
+  "ideInstallationModified": false,
+  "installedJars": [
+    {
+      "jar": "platform-bookmarks-plugin/lib/modules/intellij.platform.bookmarks.jar",
+      "matchesInstalledGui": true
+    },
+    {
+      "jar": "platform-bookmarks-plugin/lib/modules/intellij.platform.debugger.impl.bookmarks.jar",
+      "matchesInstalledGui": true
+    },
+    {
+      "jar": "platform-bookmarks-plugin/lib/modules/intellij.platform.vcs.log.impl.bookmarks.jar",
+      "matchesInstalledGui": true
+    },
+    {
+      "jar": "platform-bookmarks-plugin/lib/platform-bookmarks-plugin.jar",
+      "matchesInstalledGui": true
+    }
+  ],
+  "observations": {
+    "independentParentAndChildChecks": "PASS",
+    "sameLineAddedToThreeGroups": "PASS",
+    "cancelDeletionKeepsReferences": "PASS",
+    "removeCurrentReferenceKeepsOtherTwo": "PASS",
+    "deleteEverywhereClearsAllCheckedGroups": "PASS",
+    "singleReferenceDeletedWithoutDialog": "PASS",
+    "nativeMarkdownEdit": "PASS",
+    "sameMarkdownPersistedInTwoGroups": "PASS",
+    "twoCheckedGroupsRestoredAfterRestart": "PASS",
+    "noGeneratedMarkdownFile": true,
+    "finalSessionSevereEvents": 0
+  },
+  "persistedGroupNames": [
+    "project",
+    "验收分组"
+  ],
+  "persistedDescriptionCharacters": 56,
+  "notes": "This SHA-256 identifies the local macOS GUI build. The GitHub Release carries its own CI-produced ZIP and matching checksum/report attachments."
+}

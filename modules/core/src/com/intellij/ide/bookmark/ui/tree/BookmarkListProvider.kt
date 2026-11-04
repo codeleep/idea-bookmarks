@@ -3,6 +3,10 @@ package com.intellij.ide.bookmark.ui.tree
 
 import com.intellij.ide.bookmark.BookmarkBundle
 import com.intellij.ide.bookmark.BookmarksDevBundle
+import com.intellij.ide.bookmark.BookmarkOccurrence
+import com.intellij.ide.bookmark.BookmarksManager
+import com.intellij.ide.bookmark.BookmarksManagerImpl
+import com.intellij.ide.bookmark.ui.BookmarkDeletion
 import com.intellij.ide.bookmark.ui.MarkdownDescriptionEditor
 import com.intellij.ide.bookmark.BookmarksListProvider
 import com.intellij.ide.bookmark.FileBookmark
@@ -39,9 +43,16 @@ internal class BookmarkListProvider(private val project: Project) : BookmarksLis
 
   override fun getDeleteActionText(): @Nls String = BookmarkBundle.message("bookmark.delete.action.text")
   override fun canDelete(selection: List<*>): Boolean = selection.all { it is BookmarkNode<*> }
-  override fun performDelete(selection: List<*>, parent: JComponent): Unit = selection.forEach { performDelete(it) }
-  private fun performDelete(node: Any?) {
-    if (node is FileNode) node.children.forEach { performDelete(it) }
-    if (node is BookmarkNode<*>) node.value?.let { node.bookmarkGroup?.remove(it) }
+  override fun performDelete(selection: List<*>, parent: JComponent) {
+    val manager = BookmarksManager.getInstance(project) as? BookmarksManagerImpl ?: return
+    val occurrences = mutableListOf<BookmarkOccurrence>()
+    fun collect(node: Any?) {
+      if (node is FileNode) node.children.forEach { collect(it) }
+      if (node is BookmarkNode<*>) node.bookmarkGroup?.let { group ->
+        if (group in manager.getGroups(node.value)) occurrences.add(BookmarkOccurrence(group, node.value))
+      }
+    }
+    selection.forEach { collect(it) }
+    BookmarkDeletion.delete(project, manager, occurrences)
   }
 }

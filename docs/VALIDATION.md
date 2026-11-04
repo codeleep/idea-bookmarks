@@ -1,5 +1,7 @@
 # Bookmarks Markdown 与树形分组验证记录
 
+这份记录是版本 `.2` 的历史记录。版本 `.3` 的多组引用、共享描述和删除规则见 [多组书签说明](MULTI_GROUP.md) 及 `evidence/gui-multigroup-validation.json`。
+
 ## 1. 结论与环境
 
 **新版 `262.11879.100.2` 在未修改的官方 IDEA 2026.2.4 中加载运行，Markdown 描述和树形分组验证通过。** 描述编辑直接使用 IDEA 内置 Markdown 插件的编辑器和实时预览，修改即时回写书签状态。
@@ -82,8 +84,8 @@ export BOOKMARKS_IDEA_HOME="/你的路径/IntelliJ IDEA.app"
 | 证据 | 内容 |
 |---|---|
 | `docs/evidence/source-build-validation.json` | 从源码归档独立编译及逐项产物对比 |
-| `docs/evidence/runtime-validation.json` | 交付 ZIP 的 SHA-256、版本及 50 项检查 |
-| `docs/evidence/runtime-checks.txt` | 自动化 PASS 项 |
+| `docs/evidence/runtime-validation-262.11879.100.2.json` | 交付 ZIP 的 SHA-256、版本及 50 项检查 |
+| `docs/evidence/runtime-checks-262.11879.100.2.txt` | 自动化 PASS 项 |
 | `docs/evidence/gui-validation.json` | 最终 GUI 观测、精确安装方式、恢复路径和安装 JAR 校验 |
 | `docs/evidence/gui-baseline-262.11879.100.1.json` | 基线版本从磁盘安装的历史记录 |
 | `docs/evidence/sdk-signature.txt` | 官方 SDK 签名校验结果 |

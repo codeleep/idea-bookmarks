@@ -13,6 +13,8 @@
 | 文件和行书签对象 | `modules/core/src/com/intellij/ide/bookmark/providers/` |
 | 编辑器侧栏书签绘制与刷新 | `GutterLineBookmarkRenderer.kt`、`GutterLineBookmarkUpdater.kt`，位于核心 `bookmark` 包 |
 | 添加、删除、分组和导航动作 | `modules/core/src/com/intellij/ide/bookmark/actions/` |
+| 多组归属的独立复选树与对话框 | `modules/core/src/com/intellij/ide/bookmark/ui/BookmarkGroupsDialog.kt` |
+| 按引用数量选择删除范围 | `modules/core/src/com/intellij/ide/bookmark/ui/BookmarkDeletion.kt` |
 | 原生 Markdown 编辑页、内存文档和描述回写 | `modules/core/src/com/intellij/ide/bookmark/ui/MarkdownDescriptionEditor.kt` |
 | 描述的只读预览和树节点摘要 | `MarkdownDescriptionPanel.kt`、`MarkdownPane.kt`、`MarkdownDescriptions.kt` |
 | 子分组与分组移动动作 | `modules/core/src/com/intellij/ide/bookmark/actions/GroupHierarchyActions.kt` |
@@ -43,7 +45,7 @@
 
 ## 3. Markdown 与分组的依赖
 
-原生 Markdown 编辑通过平台公开的 `FileEditorManager.openFile()` 打开 `LightVirtualFile`，文件类型直接引用官方 Markdown 插件的 `MarkdownFileType`。编辑器、实时预览、语言能力和生命周期由 IDEA 的文件编辑器提供器管理，插件不复制 Markdown 编辑器实现。描述文档监听器即时回写 `BookmarkGroup`；关闭页签移除监听器，删除书签或分组关闭对应编辑页。
+原生 Markdown 编辑通过平台公开的 `FileEditorManager.openFile()` 打开 `LightVirtualFile`，文件类型直接引用官方 Markdown 插件的 `MarkdownFileType`。编辑器、实时预览、语言能力和生命周期由 IDEA 的文件编辑器提供器管理，插件不复制 Markdown 编辑器实现。描述文档监听器即时回写 `BookmarkGroup`；同一个书签在各组共用一个文档与编辑页。关闭页签移除监听器，最后一个引用被删除后关闭编辑页。
 
 `plugin/plugin.xml` 和核心模块声明对 `org.intellij.plugins.markdown` 的依赖。构建 classpath 只引用官方 `plugins/markdown/lib/intellij.markdown.jar`，不将其装进交付 ZIP。工具窗口中的只读预览使用 SDK 的 Markdown 解析库和 Jsoup。
 
@@ -62,3 +64,9 @@ flowchart LR
     Jars --> Zip
     Zip --> UserPlugins[官方 IDEA 用户插件目录]
 ```
+
+## 5. 多组引用与共享描述
+
+`InManagerInfo` 为同一书签保存一个描述、助记符和行标记；多个组引用它。`setBookmarkGroups()` 先添加新引用，再移除取消的引用，避免换组时丢失描述与标记。状态文件仍在各组中记录书签与描述，读取后复用同一书签对象。旧版存在不同组描述时，保留各段原文及原分组标题后合并；再次保存恢复不重复合并。
+
+`BookmarkDeletion.needsChoice()` 判断是否存在多组引用。工具窗口删除和编辑器 Toggle Bookmark 共用删除范围提示；`deleteOccurrences()` 执行当前组移除或所有组删除。组本身的删除仍保留其他组中的引用。

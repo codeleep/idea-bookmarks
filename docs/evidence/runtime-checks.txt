@@ -42,6 +42,34 @@ PASS bookmark selection supports arbitrary nesting
 PASS line-bookmark popup retains ancestor groups of nested line bookmarks
 PASS deleting a group removes its subtree
 PASS subtree deletion preserves bookmarks in other branches
+PASS shared line bookmark created
+PASS same line bookmark assigned to three groups
+PASS memberships retain one bookmark identity and mnemonic
+PASS duplicate membership in the same group rejected
+PASS actual checkbox tree restores checked groups
+PASS parent and child checkboxes are independent
+PASS unchecked parent is rendered unchecked even when its child is checked
+PASS empty membership selection does not delete the bookmark
+PASS all groups reuse one native Markdown editor buffer
+PASS native Markdown edits immediately update every group
+PASS editing a description in any group updates the shared text
+PASS deleting a multiply referenced bookmark requires a scope choice
+PASS remove-current-group preserves other references and Markdown
+PASS removing one reference retains the shared editor buffer
+PASS membership restored without losing shared description
+PASS line relocation updates all references and keeps the mnemonic
+PASS line relocation preserves the shared Markdown
+PASS multi-group line bookmark restored from XML
+PASS restored memberships and descriptions agree in all groups
+PASS single remaining reference deletes without prompting
+PASS deleting the final reference removes bookmark and mnemonic
+PASS delete-everywhere removes every group reference
+PASS stale Markdown editor cannot recreate a deleted bookmark
+PASS legacy duplicate bookmark memberships restored
+PASS distinct legacy descriptions merged without discarding text
+PASS migrated description shared by every group
+PASS merged legacy description restored again
+PASS legacy description migration is idempotent
 PASS old flat bookmark migrated
 PASS old flat list remains a root group
 PASS legacy description preserved exactly

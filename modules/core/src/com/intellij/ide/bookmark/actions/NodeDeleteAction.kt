@@ -9,6 +9,7 @@ import com.intellij.ide.bookmark.FileBookmark
 import com.intellij.ide.bookmark.ui.BookmarksView
 import com.intellij.ide.bookmark.ui.BookmarksViewState
 import com.intellij.ide.bookmark.ui.tree.FileNode
+import com.intellij.ide.bookmark.ui.tree.BookmarkNode
 import com.intellij.ide.bookmark.ui.tree.FolderNode
 import com.intellij.ide.bookmark.ui.tree.GroupNode
 import com.intellij.ide.util.treeView.AbstractTreeNode
@@ -58,6 +59,10 @@ internal class NodeDeleteAction : DumbAwareAction() {
                             nodes: List<AbstractTreeNode<*>>,
                             project: Project,
                             view: BookmarksView) {
+      if (nodes.all { it is BookmarkNode<*> }) {
+        BookmarksListProviderService.findProvider(project) { it.canDelete(nodes) }?.performDelete(nodes, view)
+        return
+      }
       val shouldDelete = when {
         bookmarksViewState == null -> true
         else -> {

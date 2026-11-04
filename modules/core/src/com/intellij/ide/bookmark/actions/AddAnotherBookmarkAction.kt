@@ -1,7 +1,6 @@
 // Copyright 2000-2024 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.ide.bookmark.actions
 
-import com.intellij.ide.bookmark.LineBookmark
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
@@ -21,7 +20,6 @@ internal class AddAnotherBookmarkAction : DumbAwareAction() {
     if (event.contextBookmarks != null) { return false }
     val manager = event.bookmarksManager ?: return false
     val bookmark = event.contextBookmark ?: return false
-    if (bookmark is LineBookmark) return false
     val type = manager.getType(bookmark) ?: return false
     if (perform) manager.add(bookmark, type)
     return true

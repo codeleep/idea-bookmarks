@@ -3,6 +3,8 @@ package bookmarks.validation;
 import com.intellij.ide.bookmark.*;
 import com.intellij.ide.bookmark.ui.BookmarksView;
 import com.intellij.ide.bookmark.ui.MarkdownDescriptionEditor;
+import com.intellij.ide.bookmark.ui.BookmarkGroupsTree;
+import com.intellij.ide.bookmark.ui.BookmarkDeletion;
 import com.intellij.ide.bookmark.ui.GroupBookmarkVisitor;
 import com.intellij.ide.bookmark.ui.tree.GroupNode;
 import com.intellij.ide.bookmark.ui.tree.RootNode;
@@ -35,6 +37,9 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
   private static VirtualFile file;
   private static String childId;
   private static String leafId;
+  private static String sharedA, sharedB, sharedC;
+  private static String migratedDescription;
+  private static com.intellij.openapi.editor.Document sharedEditorDocument;
   private static final String MARKDOWN = """
       # CDC 链路
 
@@ -92,6 +97,24 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
       edt(BookmarkSmokeStarter::hierarchyAndMarkdown);
       await(() -> manager.getBookmark(BookmarkType.LETTER_B) != null, "nested bookmark restored from XML");
       edt(BookmarkSmokeStarter::verifyHierarchyAndTree);
+      edt(BookmarkSmokeStarter::multiGroupBookmarks);
+      await(() -> manager.getBookmark(BookmarkType.DIGIT_2) != null && manager.getGroups(manager.getBookmark(BookmarkType.DIGIT_2)).size() == 3,
+            "multi-group line bookmark restored from XML");
+      edt(BookmarkSmokeStarter::verifySharedBookmarkRestoreAndDeletion);
+      edt(BookmarkSmokeStarter::migrateDifferentDescriptions);
+      await(() -> manager.getGroups().size() == 2 && manager.getGroups().stream().allMatch(g -> !g.getBookmarks().isEmpty()), "legacy duplicate bookmark memberships restored");
+      edt(() -> {
+        Bookmark bookmark = manager.getGroups().get(0).getBookmarks().get(0);
+        migratedDescription = manager.getGroups().get(0).getDescription(bookmark);
+        check(migratedDescription.contains("旧说明 A") && migratedDescription.contains("旧说明 B"), "distinct legacy descriptions merged without discarding text");
+        check(manager.getGroups().stream().allMatch(g -> migratedDescription.equals(g.getDescription(bookmark))), "migrated description shared by every group");
+        manager.loadState(XmlSerializer.deserialize(XmlSerializer.serialize(manager.getState()), ManagerState.class));
+      });
+      await(() -> manager.getGroups().size() == 2 && manager.getGroups().stream().allMatch(g -> !g.getBookmarks().isEmpty()), "merged legacy description restored again");
+      edt(() -> {
+        Bookmark bookmark = manager.getGroups().get(0).getBookmarks().get(0);
+        check(migratedDescription.equals(manager.getGroups().get(0).getDescription(bookmark)), "legacy description migration is idempotent");
+      });
       edt(BookmarkSmokeStarter::legacyAndDamagedState);
       await(() -> manager.getBookmark(BookmarkType.LETTER_C) != null, "old flat bookmark migrated");
       edt(() -> {
@@ -136,6 +159,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     check(manager.setParentGroup(child, root) && manager.getParentGroup(leaf) == child, "reparent preserves descendants");
     Bookmark bookmark = manager.createBookmark(file);
     check(leaf.add(bookmark, BookmarkType.LETTER_B, MARKDOWN), "Markdown description added in nested group");
+    leaf.setDescription(bookmark, MARKDOWN);
     check(MARKDOWN.equals(leaf.getDescription(bookmark)), "multiline Unicode Markdown stored without loss");
     Bookmark line = LineBookmarkProvider.Util.find(project).createBookmark(file, 1);
     check(leaf.add(line, BookmarkType.DIGIT_1, "Line **note**"), "line bookmark added to deep group");
@@ -210,6 +234,80 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     group.getBookmarks().add(bookmark);
     legacy.getGroups().add(group);
     manager.loadState(legacy);
+  }
+
+  private static void multiGroupBookmarks() {
+    BookmarkGroup a = manager.addGroup("多组 A", false);
+    BookmarkGroup b = manager.addSubgroup(a, "多组 B", false);
+    BookmarkGroup c = manager.addGroup("多组 C", false);
+    sharedA = manager.getGroupId(a); sharedB = manager.getGroupId(b); sharedC = manager.getGroupId(c);
+    Bookmark line = LineBookmarkProvider.Util.find(project).createBookmark(file, 2);
+    check(a.add(line, BookmarkType.DIGIT_2, MARKDOWN), "shared line bookmark created");
+    check(manager.setBookmarkGroups(line, List.of(a, b, c)) && manager.getGroups(line).size() == 3, "same line bookmark assigned to three groups");
+    check(manager.getBookmarks().stream().filter(line::equals).count() == 1 && manager.getBookmark(BookmarkType.DIGIT_2).equals(line), "memberships retain one bookmark identity and mnemonic");
+    check(!b.add(line, BookmarkType.DIGIT_2, null), "duplicate membership in the same group rejected");
+    BookmarkGroupsTree tree = new BookmarkGroupsTree(manager, line);
+    check(tree.selectedGroups().size() == 3 && tree.getRowCount() >= 3, "actual checkbox tree restores checked groups");
+    tree.setNodeState(tree.getGroupNodes().get(a), false);
+    check(tree.selectedGroups().contains(b) && !tree.selectedGroups().contains(a), "parent and child checkboxes are independent");
+    var renderer = (com.intellij.ui.CheckboxTreeBase.CheckboxTreeCellRendererBase)tree.getCellRenderer();
+    renderer.getTreeCellRendererComponent(tree, tree.getGroupNodes().get(a), false, true, false, 0, false);
+    check(!renderer.getCheckbox().isSelected(), "unchecked parent is rendered unchecked even when its child is checked");
+    check(!manager.setBookmarkGroups(line, List.of()) && manager.getGroups(line).size() == 3, "empty membership selection does not delete the bookmark");
+    var editor = MarkdownDescriptionEditor.getInstance(project);
+    VirtualFile note = editor.getDescriptionFile(a, line);
+    check(editor.getDescriptionFile(b, line) == note && editor.getDescriptionFile(c, line) == note, "all groups reuse one native Markdown editor buffer");
+    var document = FileDocumentManager.getInstance().getDocument(note);
+    sharedEditorDocument = document;
+    WriteCommandAction.runWriteCommandAction(project, () -> document.setText(MARKDOWN + "\n共享修改"));
+    check(manager.getGroups(line).stream().allMatch(g -> (MARKDOWN + "\n共享修改").equals(g.getDescription(line))), "native Markdown edits immediately update every group");
+    b.setDescription(line, MARKDOWN);
+    check(MARKDOWN.equals(a.getDescription(line)) && MARKDOWN.equals(c.getDescription(line)), "editing a description in any group updates the shared text");
+    var occurrence = new BookmarkOccurrence(a, line);
+    check(BookmarkDeletion.needsChoice(manager, List.of(occurrence)), "deleting a multiply referenced bookmark requires a scope choice");
+    manager.deleteOccurrences(List.of(occurrence), false);
+    check(new java.util.HashSet<>(manager.getGroups(line)).equals(java.util.Set.of(b, c)) && MARKDOWN.equals(b.getDescription(line)), "remove-current-group preserves other references and Markdown");
+    check(editor.getDescriptionFile(c, line) == note, "removing one reference retains the shared editor buffer");
+    check(manager.setBookmarkGroups(line, List.of(a, b, c)), "membership restored without losing shared description");
+    Bookmark moved = LineBookmarkProvider.Util.find(project).createBookmark(file, 0);
+    var replacements = new java.util.HashMap<Bookmark, Bookmark>(); replacements.put(line, moved);
+    manager.update(replacements);
+    check(manager.getGroups(moved).size() == 3 && manager.getBookmark(BookmarkType.DIGIT_2).equals(moved), "line relocation updates all references and keeps the mnemonic");
+    check(manager.getGroups(moved).stream().allMatch(g -> MARKDOWN.equals(g.getDescription(moved))), "line relocation preserves the shared Markdown");
+    manager.loadState(XmlSerializer.deserialize(XmlSerializer.serialize(manager.getState()), ManagerState.class));
+  }
+
+  private static void verifySharedBookmarkRestoreAndDeletion() {
+    Bookmark line = manager.getBookmark(BookmarkType.DIGIT_2);
+    BookmarkGroup a = manager.getGroupById(sharedA), b = manager.getGroupById(sharedB), c = manager.getGroupById(sharedC);
+    check(new java.util.HashSet<>(manager.getGroups(line)).equals(java.util.Set.of(a,b,c)) && manager.getGroups(line).stream().allMatch(g -> MARKDOWN.equals(g.getDescription(line))), "restored memberships and descriptions agree in all groups");
+    manager.deleteOccurrences(List.of(new BookmarkOccurrence(a,line)), false);
+    manager.deleteOccurrences(List.of(new BookmarkOccurrence(c,line)), false);
+    check(!BookmarkDeletion.needsChoice(manager, List.of(new BookmarkOccurrence(b,line))), "single remaining reference deletes without prompting");
+    manager.deleteOccurrences(List.of(new BookmarkOccurrence(b,line)), false);
+    check(manager.getGroups(line).isEmpty() && manager.getBookmark(BookmarkType.DIGIT_2) == null, "deleting the final reference removes bookmark and mnemonic");
+    Bookmark another = LineBookmarkProvider.Util.find(project).createBookmark(file, 2);
+    a.add(another, BookmarkType.DIGIT_3, MARKDOWN);
+    manager.setBookmarkGroups(another, List.of(a,b,c));
+    manager.deleteOccurrences(List.of(new BookmarkOccurrence(b,another)), true);
+    check(manager.getGroups(another).isEmpty() && manager.getBookmark(BookmarkType.DIGIT_3) == null
+            && List.of(a,b,c).stream().noneMatch(g -> g.getBookmarks().contains(another)), "delete-everywhere removes every group reference");
+    WriteCommandAction.runWriteCommandAction(project, () -> sharedEditorDocument.setText("已删除书签的旧编辑内容"));
+    check(manager.getGroups(another).isEmpty() && manager.getBookmark(BookmarkType.DIGIT_3) == null, "stale Markdown editor cannot recreate a deleted bookmark");
+  }
+
+  private static void migrateDifferentDescriptions() {
+    ManagerState state = new ManagerState();
+    for (String name : List.of("A", "B")) {
+      GroupState group = new GroupState(); group.setName(name);
+      BookmarkState bookmark = new BookmarkState();
+      bookmark.setProvider("com.intellij.ide.bookmark.providers.LineBookmarkProvider");
+      bookmark.getAttributes().put("url", file.getUrl());
+      bookmark.getAttributes().put("line", "0");
+      bookmark.setDescription("旧说明 " + name);
+      group.getBookmarks().add(bookmark); state.getGroups().add(group);
+    }
+    manager.loadState(state);
   }
 
   private static GroupState groupState(String id, String parentId, String name) {

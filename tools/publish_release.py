@@ -140,7 +140,7 @@ def main():
     notes.write_text(
         f"面向官方 IntelliJ IDEA **{runtime['sdkVersion']} / {runtime['sdkBuild']}** 的 Bookmarks 桌面插件。\n\n"
         f"下载 **{assets[0].name}**，无需解压，在 IDEA 的 **Settings → Plugins → 齿轮 → Install Plugin from Disk** 中选择该文件并重启。请保持内置 Markdown 插件启用。\n\n"
-        f"- 支持 Markdown 书签描述和多层树形分组。\n"
+        f"- 支持多层树形分组、同一书签多组引用、共享 Markdown 描述，以及按引用数量选择删除范围。\n"
         f"- `{assets[1].name}` 是完整二开源码。\n"
         f"- `SHA256SUMS` 用于核对安装包与源码包；JSON 附件是本次构建与运行检查报告。\n"
         f"- IDE 进程内检查：**{len(runtime['checks'])} 项通过**。\n"
