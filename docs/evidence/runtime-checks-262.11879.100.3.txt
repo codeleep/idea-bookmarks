@@ -1,0 +1,78 @@
+PASS plugin registered
+PASS development version selected
+PASS plugin loaded from isolated user directory
+PASS project service created
+PASS implementation from installed ZIP
+PASS virtual file found
+PASS file bookmark and group creation
+PASS mnemonic lookup
+PASS plain description retained
+PASS group rename
+PASS bookmarks removed
+PASS original bookmark state restored
+PASS three-level hierarchy and same names in separate branches
+PASS duplicate sibling rejected
+PASS parent and child relationships
+PASS preorder matches displayed hierarchy
+PASS rename preserves child identity
+PASS cycles and self-parenting rejected
+PASS move with sibling name collision rejected
+PASS subtree reparented
+PASS reparent preserves descendants
+PASS Markdown description added in nested group
+PASS multiline Unicode Markdown stored without loss
+PASS line bookmark added to deep group
+PASS Markdown headings lists code tables and links rendered
+PASS preview sanitizes active HTML and automatic image loads
+PASS tree displays single-line Markdown summary
+PASS description uses native Markdown file type without a project file
+PASS repeated editing reuses the same description buffer
+PASS bundled Markdown split editor provider accepts description buffer
+PASS native Markdown document contains the original description
+PASS native editor changes save to the correct nested bookmark
+PASS native document restores Markdown without losing formatting
+PASS nested bookmark restored from XML
+PASS hierarchy IDs survive XML serialization
+PASS Markdown survives XML serialization
+PASS nested default group retained
+PASS actual tool-window tree contains nested groups
+PASS nested group selection visitor works beyond fixed depth
+PASS selection traverses ancestor groups
+PASS bookmark selection supports arbitrary nesting
+PASS line-bookmark popup retains ancestor groups of nested line bookmarks
+PASS deleting a group removes its subtree
+PASS subtree deletion preserves bookmarks in other branches
+PASS shared line bookmark created
+PASS same line bookmark assigned to three groups
+PASS memberships retain one bookmark identity and mnemonic
+PASS duplicate membership in the same group rejected
+PASS actual checkbox tree restores checked groups
+PASS parent and child checkboxes are independent
+PASS unchecked parent is rendered unchecked even when its child is checked
+PASS empty membership selection does not delete the bookmark
+PASS all groups reuse one native Markdown editor buffer
+PASS native Markdown edits immediately update every group
+PASS editing a description in any group updates the shared text
+PASS deleting a multiply referenced bookmark requires a scope choice
+PASS remove-current-group preserves other references and Markdown
+PASS removing one reference retains the shared editor buffer
+PASS membership restored without losing shared description
+PASS line relocation updates all references and keeps the mnemonic
+PASS line relocation preserves the shared Markdown
+PASS multi-group line bookmark restored from XML
+PASS restored memberships and descriptions agree in all groups
+PASS single remaining reference deletes without prompting
+PASS deleting the final reference removes bookmark and mnemonic
+PASS delete-everywhere removes every group reference
+PASS stale Markdown editor cannot recreate a deleted bookmark
+PASS legacy duplicate bookmark memberships restored
+PASS distinct legacy descriptions merged without discarding text
+PASS migrated description shared by every group
+PASS merged legacy description restored again
+PASS legacy description migration is idempotent
+PASS old flat bookmark migrated
+PASS old flat list remains a root group
+PASS legacy description preserved exactly
+PASS damaged hierarchy retains all groups
+PASS missing and self parents recovered as roots
+PASS persisted cycles repaired

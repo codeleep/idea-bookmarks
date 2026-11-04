@@ -1,6 +1,6 @@
 # Bookmarks Markdown 与树形分组验证记录
 
-这份记录是版本 `.2` 的历史记录。版本 `.3` 的多组引用、共享描述和删除规则见 [多组书签说明](MULTI_GROUP.md) 及 `evidence/gui-multigroup-validation.json`。
+这份记录是版本 `.2` 的历史记录。版本 `.3` 的多组引用、共享描述和删除规则见 [多组书签说明](MULTI_GROUP.md) 及 `evidence/gui-multigroup-validation.json`。版本 `.4` 的新存储、AI 工具及分支链路见 [存储说明](STORAGE.md) 和当前 `evidence/runtime-validation.json`。
 
 ## 1. 结论与环境
 

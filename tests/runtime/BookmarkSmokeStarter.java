@@ -23,6 +23,11 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.tree.TreeVisitor;
 import com.intellij.util.xmlb.XmlSerializer;
+import com.intellij.tasks.context.WorkingContextManager;
+import com.intellij.tasks.context.WorkingContextProvider;
+import com.intellij.tasks.context.BranchContextTracker;
+import com.intellij.openapi.options.advanced.AdvancedSettings;
+import com.intellij.openapi.vcs.VcsConfiguration;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -40,6 +45,9 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
   private static String sharedA, sharedB, sharedC;
   private static String migratedDescription;
   private static com.intellij.openapi.editor.Document sharedEditorDocument;
+  private static BranchContextTracker branchTracker;
+  private static String branchRoot, branchChild, branchBookmark;
+  private static boolean previousBranchSetting, previousReloadSetting;
   private static final String MARKDOWN = """
       # CDC 链路
 
@@ -73,6 +81,10 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
       Path filePath = root.resolve("project/sample.txt");
       Files.createDirectories(filePath.getParent());
       Files.writeString(filePath, "first line\nsecond line\nthird line\n");
+      if (args.contains("verify-ai-archive")) {
+        verifyAiArchiveAfterRestart(root, filePath);
+        return;
+      }
       edt(() -> {
         project = ProjectManagerEx.getInstanceEx().newProject("bookmarks-validation", filePath.getParent().toString(), false, false);
         manager = (BookmarksManagerImpl)BookmarksManager.getInstance(project);
@@ -130,6 +142,62 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         check(manager.getParentGroup(manager.getGroupById("c")) == null && manager.getParentGroup(manager.getGroupById("d")) == null, "missing and self parents recovered as roots");
         check(!manager.isGroupInSubtree(manager.getGroupById("a"), manager.getGroupById("b")) || !manager.isGroupInSubtree(manager.getGroupById("b"), manager.getGroupById("a")), "persisted cycles repaired");
       });
+      edt(BookmarkSmokeStarter::normalizedStorage);
+      await(() -> !manager.isRestoringBookmarks(), "normalized state restoration completes");
+      edt(() -> {
+        check(manager.getState().getBookmarks().stream().anyMatch(b -> "unavailable-provider".equals(b.getId())), "unknown provider record retained without data loss");
+        var legacy = new ManagerState();
+        var group = new GroupState(); group.setName("Legacy unavailable provider");
+        var item = new BookmarkState(); item.setProvider("example.unavailable.BookmarkProvider");
+        item.getAttributes().put("symbol", "legacy-retained"); group.getBookmarks().add(item); legacy.getGroups().add(group);
+        manager.loadState(legacy);
+      });
+      await(() -> !manager.isRestoringBookmarks(), "legacy unavailable provider migration completes");
+      edt(() -> {
+        var id = manager.getState().getBookmarks().getFirst().getId();
+        check(id != null && id.equals(manager.getState().getBookmarks().getFirst().getId()), "legacy unavailable provider receives a stable ID across saves");
+        setupBranchContexts();
+      });
+      await(() -> !manager.isRestoringBookmarks() && manager.getGroupById(branchChild) != null
+          && manager.getBookmark(BookmarkType.DIGIT_7) != null, "official branch tracker restores branch A");
+      edt(() -> {
+        var bookmark = manager.getBookmark(BookmarkType.DIGIT_7);
+        check(manager.getParentGroup(manager.getGroupById(branchChild)) == manager.getGroupById(branchRoot), "branch context preserves parent IDs and same-name subgroups");
+        check(manager.getGroups(bookmark).size() == 3 && MARKDOWN.equals(manager.getGroupById(branchChild).getDescription(bookmark)), "branch context restores three references and exact Markdown");
+        check(branchBookmark.equals(manager.getBookmarkId(bookmark)), "branch context retains stable bookmark ID");
+        branchTracker.branchWillChange("validation-a");
+        branchTracker.branchHasChanged("validation-b");
+      });
+      await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.DIGIT_8) != null
+          && manager.getGroup("Branch B") != null, "official branch tracker restores branch B");
+      edt(() -> {
+        check(manager.getBookmark(BookmarkType.DIGIT_7) == null && manager.getGroupById(branchRoot) == null, "branch B contains no branch A bookmarks or groups");
+        check("分支 B 描述".equals(manager.getGroup("Branch B").getDescription(manager.getBookmark(BookmarkType.DIGIT_8))), "branch-specific Markdown remains independent");
+        AdvancedSettings.setBoolean("tasks.enable.bookmark.context.on.branch.switch", false);
+        var before = manager.getBookmark(BookmarkType.DIGIT_8);
+        var context = new org.jdom.Element("context");
+        WorkingContextManager.getInstance(project).saveContext(context);
+        WorkingContextManager.getInstance(project).clearContext();
+        WorkingContextManager.getInstance(project).loadContext(context);
+        check(manager.getBookmark(BookmarkType.DIGIT_8) == before, "original global-mode setting keeps branch context operations as no-ops");
+        AdvancedSettings.setBoolean("tasks.enable.bookmark.context.on.branch.switch", previousBranchSetting);
+        VcsConfiguration.getInstance(project).RELOAD_CONTEXT = previousReloadSetting;
+      });
+      var aiState = XmlSerializer.deserialize(com.intellij.openapi.util.JDOMUtil.load(root.resolve("ai-import.xml")), ManagerState.class);
+      edt(() -> manager.loadState(aiState));
+      await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_Z) != null, "AI JSON writer output restored by actual IDE serializer");
+      edt(() -> {
+        var bookmark = manager.getBookmark(BookmarkType.LETTER_Z);
+        check("ai-stable-bookmark".equals(manager.getBookmarkId(bookmark)) && manager.getGroups(bookmark).size() == 2, "AI import preserves canonical ID and two references");
+        check(manager.getParentGroup(manager.getGroupById("ai-child")) == manager.getGroupById("ai-root") && manager.getDefaultGroup() == manager.getGroupById("ai-child"), "AI import restores hierarchy and nested default group");
+        check("# AI 原文\n\n**共享** <tag> & 中文\n".equals(manager.getGroupById("ai-child").getDescription(bookmark)), "AI import preserves exact Markdown and special characters");
+      });
+      com.intellij.configurationStore.StoreUtil.saveSettings(project, true);
+      Path persisted = root.resolve("project/.idea/bookmarks.xml");
+      await(() -> Files.isRegularFile(persisted), "new state saved to project bookmarks.xml");
+      var persistedText = Files.readString(persisted);
+      check(persistedText.contains("formatVersion") && persistedText.contains("bookmarkIds"), "persisted project file uses normalized format");
+      check(Files.isRegularFile(root.resolve("project/.idea/bookmarks-legacy-backup.xml")), "original legacy state backed up before migration");
       Files.writeString(root.resolve("result.txt"), "PASS\npluginVersion=" + descriptor.getVersion() + "\npluginPath=" + descriptor.getPluginPath() + "\n");
       System.out.println("BOOKMARKS_SMOKE_PASS");
       System.exit(0);
@@ -308,6 +376,110 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
       group.getBookmarks().add(bookmark); state.getGroups().add(group);
     }
     manager.loadState(state);
+  }
+
+  private static void normalizedStorage() {
+    manager.remove();
+    var root = manager.addGroup("Canonical", true);
+    var child = manager.addSubgroup(root, "Child", false);
+    var other = manager.addGroup("Other", false);
+    var bookmark = LineBookmarkProvider.Util.find(project).createBookmark(file, 1);
+    root.add(bookmark, BookmarkType.DIGIT_6, MARKDOWN);
+    manager.setBookmarkGroups(bookmark, List.of(root, child, other));
+    var id = manager.getBookmarkId(bookmark);
+    var state = manager.getState();
+    check(state.getFormatVersion() == 2 && state.getBookmarks().size() == 1, "normalized store contains one canonical bookmark");
+    check(state.getGroups().stream().allMatch(g -> g.getBookmarks().isEmpty() && g.getBookmarkIds().equals(List.of(id))), "groups persist ordered references without description copies");
+    check(MARKDOWN.equals(state.getBookmarks().getFirst().getDescription()), "canonical Markdown stored exactly once");
+    var moved = LineBookmarkProvider.Util.find(project).createBookmark(file, 0);
+    var updates = new java.util.HashMap<Bookmark, Bookmark>(); updates.put(bookmark, moved); manager.update(updates);
+    check(id.equals(manager.getBookmarkId(moved)), "stable bookmark ID survives line relocation");
+    var invalid = XmlSerializer.deserialize(XmlSerializer.serialize(manager.getState()), ManagerState.class);
+    invalid.getGroups().getFirst().getBookmarkIds().add("missing");
+    expectRejected(invalid, "dangling references rejected before live state changes");
+    invalid = XmlSerializer.deserialize(XmlSerializer.serialize(manager.getState()), ManagerState.class);
+    invalid.getGroups().getFirst().setParentId(invalid.getGroups().get(1).getId());
+    expectRejected(invalid, "new-format parent cycles rejected");
+    invalid = XmlSerializer.deserialize(XmlSerializer.serialize(manager.getState()), ManagerState.class);
+    invalid.getGroups().getFirst().getBookmarkIds().clear();
+    invalid.getGroups().get(1).getBookmarkIds().clear();
+    invalid.getGroups().get(2).getBookmarkIds().clear();
+    expectRejected(invalid, "orphan canonical bookmarks rejected");
+    invalid = XmlSerializer.deserialize(XmlSerializer.serialize(manager.getState()), ManagerState.class);
+    invalid.setFormatVersion(99);
+    expectRejected(invalid, "unknown format version rejected");
+    check(manager.getGroups(moved).size() == 3 && manager.getBookmark(BookmarkType.DIGIT_6) == moved, "invalid imports retain all existing references");
+    var providerState = manager.getState();
+    var unknown = new BookmarkState(); unknown.setId("unavailable-provider"); unknown.setProvider("example.unavailable.BookmarkProvider");
+    unknown.getAttributes().put("symbol", "retained"); unknown.setDescription("Unavailable provider description");
+    providerState.getBookmarks().add(unknown);
+    providerState.getGroups().getFirst().getBookmarkIds().add(unknown.getId());
+    manager.loadState(providerState);
+  }
+
+  private static void expectRejected(ManagerState state, String label) {
+    boolean rejected = false;
+    try { manager.loadState(state); } catch (IllegalArgumentException expected) { rejected = true; }
+    check(rejected, label);
+  }
+
+  private static void setupBranchContexts() {
+    var providers = WorkingContextProvider.EP_NAME.getExtensionList().stream().filter(p -> p.getId().equals("bookmarks")).toList();
+    check(providers.size() == 1 && providers.getFirst().getClass().getName().equals("com.intellij.ide.bookmark.context.BookmarkContextProvider"), "exactly one upgraded bookmarks context adapter registered");
+    previousBranchSetting = AdvancedSettings.getBoolean("tasks.enable.bookmark.context.on.branch.switch");
+    previousReloadSetting = VcsConfiguration.getInstance(project).RELOAD_CONTEXT;
+    AdvancedSettings.setBoolean("tasks.enable.bookmark.context.on.branch.switch", true);
+    VcsConfiguration.getInstance(project).RELOAD_CONTEXT = true;
+    manager.remove();
+    var root = manager.addGroup("Branch A", true);
+    var child = manager.addSubgroup(root, "Same name", false);
+    var other = manager.addGroup("Another root", false);
+    var sameName = manager.addSubgroup(other, "Same name", false);
+    branchRoot = manager.getGroupId(root); branchChild = manager.getGroupId(child);
+    var bookmark = LineBookmarkProvider.Util.find(project).createBookmark(file, 1);
+    root.add(bookmark, BookmarkType.DIGIT_7, MARKDOWN);
+    manager.setBookmarkGroups(bookmark, List.of(root, child, sameName));
+    branchBookmark = manager.getBookmarkId(bookmark);
+    branchTracker = new BranchContextTracker(project);
+    branchTracker.branchWillChange("validation-a");
+    var contextManager = WorkingContextManager.getInstance(project);
+    check(contextManager.hasContext("__branch_context_validation-a"), "original working-context archive saves branch A");
+    branchTracker.branchHasChanged("validation-new");
+    check(manager.getBookmark(BookmarkType.DIGIT_7) != null, "first visit to an unsaved branch retains upstream behavior");
+    contextManager.clearContext();
+    var branchB = manager.addGroup("Branch B", true);
+    branchB.add(LineBookmarkProvider.Util.find(project).createBookmark(file, 0), BookmarkType.DIGIT_8, "分支 B 描述");
+    branchTracker.branchWillChange("validation-b");
+    branchTracker.branchHasChanged("validation-a");
+  }
+
+  private static void verifyAiArchiveAfterRestart(Path root, Path filePath) throws Exception {
+    edt(() -> {
+      project = ProjectManagerEx.getInstanceEx().loadProject(filePath.getParent());
+      manager = (BookmarksManagerImpl)BookmarksManager.getInstance(project);
+    });
+    await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_Z) != null, "fresh IDE restores normalized project state from disk");
+    edt(() -> {
+      check(manager.getGroups(manager.getBookmark(BookmarkType.LETTER_Z)).size() == 2, "fresh IDE preserves two canonical references");
+      check(manager.getParentGroup(manager.getGroupById("ai-child")) == manager.getGroupById("ai-root"), "fresh IDE preserves project group hierarchy");
+      check(WorkingContextManager.getInstance(project).loadContext("__branch_context_validation-a"), "fresh IDE reads AI-edited original branch archive");
+    });
+    await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.DIGIT_7) != null, "AI-edited branch A restored after process restart");
+    edt(() -> {
+      var bookmark = manager.getBookmark(BookmarkType.DIGIT_7);
+      var groups = manager.getGroups(bookmark);
+      check(groups.size() == 3 && groups.stream().allMatch(g -> (MARKDOWN+"\nAI branch archive update: 中文 & <tag>").equals(g.getDescription(bookmark))), "AI archive update preserves original Markdown and synchronizes all references");
+      check(manager.getChildGroups(manager.getGroup("Branch A")).stream().anyMatch(g -> g.getName().equals("Same name")), "AI archive update preserves branch tree");
+      check(WorkingContextManager.getInstance(project).loadContext("__branch_context_validation-b"), "unchanged branch B archive still readable");
+    });
+    await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.DIGIT_8) != null, "unchanged branch B restored after AI update");
+    edt(() -> {
+      var bookmark = manager.getBookmark(BookmarkType.DIGIT_8);
+      check(manager.getGroups(bookmark).size() == 1 && "分支 B 描述".equals(manager.getGroups(bookmark).getFirst().getDescription(bookmark)), "AI branch A update leaves branch B data unchanged");
+    });
+    Files.writeString(root.resolve("second-process-result.txt"), "PASS: project reopen and AI-edited branch archive\n");
+    System.out.println("BOOKMARKS_RESTART_SMOKE_PASS");
+    System.exit(0);
   }
 
   private static GroupState groupState(String id, String parentId, String name) {

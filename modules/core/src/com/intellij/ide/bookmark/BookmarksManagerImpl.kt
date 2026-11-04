@@ -34,10 +34,11 @@ import org.jetbrains.annotations.ApiStatus
 import org.jetbrains.concurrency.CancellablePromise
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 private val LOG = Logger.getInstance(BookmarksManager::class.java)
 
-@State(name = "BookmarksManager", storages = [Storage(StoragePathMacros.PRODUCT_WORKSPACE_FILE)])
+@State(name = "BookmarksManager", storages = [Storage("bookmarks.xml"), Storage(StoragePathMacros.PRODUCT_WORKSPACE_FILE, deprecated = true)])
 class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: Project, private val coroutineScope: CoroutineScope) :
   BookmarksManager, PersistentStateComponentWithModificationTracker<ManagerState> {
 
@@ -45,6 +46,15 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
   private val notifier = ModificationNotifier(project)
   private val allBookmarks = mutableMapOf<Bookmark, InManagerInfo>()
   private val allGroups = mutableListOf<Group>()
+  private val pendingRestores = AtomicInteger()
+  @Volatile private var restoreGeneration = 0L
+  private var restoringSnapshot: ManagerState? = null
+  private val unresolvedBookmarks = mutableMapOf<String, MutableList<BookmarkState>>()
+
+  fun isRestoringBookmarks(): Boolean = pendingRestores.get() > 0
+  fun getBookmarkId(bookmark: Bookmark): String? = synchronized(notifier) { allBookmarks[bookmark]?.id }
+
+  init { com.intellij.ide.bookmark.context.BookmarkContextProvider.install() }
   private var defaultGroup: Group? = null
     set(group) = synchronized(notifier) {
       val old = field
@@ -81,14 +91,20 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
 
   override fun getStateModificationCount(): Long = notifier.count
 
-  override fun getState(): ManagerState = ManagerState().apply {
-    synchronized(notifier) { orderedGroups().mapTo(groups) { it.getState() } }
+  override fun getState(): ManagerState = synchronized(notifier) {
+    if (isRestoringBookmarks()) restoringSnapshot?.let { return@synchronized it }
+    restoringSnapshot = null
+    BookmarkStorageFormat.normalize(ManagerState().apply { orderedGroups().mapTo(groups) { it.getState() } })
   }
 
   override fun loadState(state: ManagerState) {
+    val resolved = BookmarkStorageFormat.resolve(state)
+    BookmarkStorageFormat.backupLegacy(project, state)
     synchronized(notifier) {
+      restoreGeneration++
       remove()
-      val loaded = state.groups.map { saved ->
+      restoringSnapshot = state
+      val loaded = resolved.groups.map { saved ->
         val id = saved.id?.takeIf { it.isNotBlank() && allGroups.none { group -> group.id == it } } ?: UUID.randomUUID().toString()
         saved to Group(saved.name.ifBlank { project.name }, saved.isDefault, false, id)
       }
@@ -386,6 +402,9 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
   }
 
   override fun remove(): Unit = synchronized(notifier) {
+    restoreGeneration++
+    restoringSnapshot = null
+    unresolvedBookmarks.clear()
     while (allGroups.isNotEmpty()) allGroups[0].remove()
   }
 
@@ -510,6 +529,7 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
   private fun replaceBookmarkInAllGroups(oldInfo: InManagerInfo, old: Bookmark, new: Bookmark): Boolean {
     allBookmarks.remove(old)
     val newInfo = InManagerInfo(new, oldInfo.type)
+    newInfo.id = oldInfo.id
     newInfo.description = oldInfo.description
     
     val oldIterator = oldInfo.groups.iterator()
@@ -773,11 +793,35 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
      * Each bookmark is created separately that allows to wait for the end of indexing.
      */
     internal fun addLater(context: Any, type: BookmarkType, description: String?) {
+      val generation = restoreGeneration
+      pendingRestores.incrementAndGet()
       invoker.invokeLater {
-        when (createBookmark(context)?.let { add(it, type, description, -1, true) }) {
-          null -> LOG.info("cannot create bookmark for $context")
-          false -> LOG.info("cannot add bookmark for $context")
-          else -> {}
+        try {
+          val bookmark = if (generation == restoreGeneration) createBookmark(context) else null
+          synchronized(notifier) {
+            if (generation == restoreGeneration) {
+              when (bookmark?.let { add(it, type, description, -1, true) }) {
+                null -> {
+                  if (context is BookmarkState) {
+                    val existing = unresolvedBookmarks.values.asSequence().flatten().firstOrNull {
+                      it.provider == context.provider && it.attributes == context.attributes
+                    }
+                    context.id = existing?.id ?: context.id ?: UUID.randomUUID().toString()
+                    unresolvedBookmarks.getOrPut(id) { mutableListOf() }.add(context)
+                  }
+                  notifier.groupsSorted()
+                  LOG.info("cannot create bookmark for $context; retained in storage")
+                }
+                false -> LOG.info("cannot add bookmark for $context")
+                else -> if (context is BookmarkState && context.id != null) allBookmarks[bookmark]?.id = context.id!!
+              }
+            }
+          }
+        }
+        finally {
+          synchronized(notifier) {
+            if (pendingRestores.decrementAndGet() == 0) notifier.groupsSorted()
+          }
         }
       }
     }
@@ -792,6 +836,7 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
       getChildGroups(this).forEach { it.remove() }
       val index = allGroups.indexOf(this)
       if (index >= 0) {
+        unresolvedBookmarks.remove(id)
         if (isDefault) defaultGroup = null
         for (bookmark in getBookmarks()) {
           removeFromGroup(this, bookmark)
@@ -839,6 +884,7 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
       for (info in groupBookmarks) {
         it.bookmarks.add(info.getState())
       }
+      it.bookmarks.addAll(unresolvedBookmarks[id].orEmpty())
     }
   }
 
@@ -847,6 +893,7 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
     val hash: Int = bookmark.hashCode()
 
     fun getState(): BookmarkState = BookmarkState().also {
+      it.id = allBookmarks[bookmark]?.id
       it.provider = bookmark.provider.javaClass.name
       it.description = allBookmarks[bookmark]?.description ?: if (isCustomDescription) description else null
       it.type = allBookmarks[bookmark]?.type ?: BookmarkType.DEFAULT
@@ -864,6 +911,7 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
   }
 
   internal inner class InManagerInfo(val bookmark: Bookmark, var type: BookmarkType) {
+    var id: String = UUID.randomUUID().toString()
     var description: String? = null
     val restoredDescriptions: MutableMap<String, String> = linkedMapOf()
     val renderer: GutterLineBookmarkRenderer? = (bookmark as? LineBookmark)?.let { GutterLineBookmarkRenderer(it) }

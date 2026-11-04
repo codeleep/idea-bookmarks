@@ -6,6 +6,11 @@ import com.intellij.util.xmlb.annotations.XMap
 
 
 class ManagerState {
+  var formatVersion: Int = 0
+
+  @get:XCollection
+  val bookmarks: MutableList<BookmarkState> = mutableListOf()
+
   @get:XCollection
   val groups: MutableList<GroupState> = mutableListOf()
 }
@@ -18,11 +23,15 @@ class GroupState {
   var isDefault: Boolean = false
 
   @get:XCollection
+  val bookmarkIds: MutableList<String> = mutableListOf()
+
+  @get:XCollection
   val bookmarks: MutableList<BookmarkState> = mutableListOf()
 }
 
 
 class BookmarkState {
+  var id: String? = null
   var provider: String? = null
   var description: String? = null
   var type: BookmarkType = BookmarkType.DEFAULT

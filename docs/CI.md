@@ -14,7 +14,7 @@ GitHub 要求带 `workflow_dispatch` 的工作流存在于默认分支，页面�
 
 ## 2. 自动发布与版本下载
 
-默认分支构建验证通过后，自动按 `plugin/plugin.xml` 中的版本创建 Release，例如 `v262.11879.100.3`。匹配插件版本的 `v*` 标签构建也会发布。Pull Request 和其他分支只构建，手动运行可取消 `publish_release` 以跳过发布。
+默认分支构建验证通过后，自动按 `plugin/plugin.xml` 中的版本创建 Release，例如 `v262.11879.100.4`。匹配插件版本的 `v*` 标签构建也会发布。Pull Request 和其他分支只构建，手动运行可取消 `publish_release` 以跳过发布。
 
 在 [版本列表](https://github.com/codeleep/idea-bookmarks/releases) 中选择版本，或打开 [最新版本](https://github.com/codeleep/idea-bookmarks/releases/latest)。每个 Release 的 Assets 包含可安装 ZIP、完整源码 ZIP、`SHA256SUMS`、构建报告和 IDE 内运行报告。这些附件保留在对应 Release 中，不受 Actions 产物 30 天保留期影响。
 
@@ -74,7 +74,7 @@ python3 tools/ci_build.py
 
 ## 5. 维护约定
 
-修改插件功能后，在 `plugin/plugin.xml` 中递增版本并推送到默认分支。工作流会从描述文件读取版本、命名 ZIP 并自动创建对应 Release。手动推送版本标签时，标签必须与描述文件匹配；例如当前版本使用 `v262.11879.100.3`。
+修改插件功能后，在 `plugin/plugin.xml` 中递增版本并推送到默认分支。工作流会从描述文件读取版本、命名 ZIP 并自动创建对应 Release。手动推送版本标签时，标签必须与描述文件匹配；例如当前版本使用 `v262.11879.100.4`。
 
 升级 SDK 时，更新 `.github/idea-sdk.json` 中的版本、构建号、下载地址和官方 SHA-256，并同步 `plugin/plugin.xml` 的兼容范围及构建参数。脚本会检查锁定构建号与描述文件的一致性，避免使用错误 SDK 生成安装包。
 

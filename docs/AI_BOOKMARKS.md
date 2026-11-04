@@ -1,0 +1,184 @@
+# AI 书签整理指南
+
+## 1. 任务约定
+
+本指南适用于 `262.11879.100.4` 及之后使用格式 2 的工程。AI 应先阅读 [存储格式](STORAGE.md)，再通过 `tools/bookmarks_store.py` 导出 JSON、整理、校验并写回。JSON 是工具实际支持的编辑格式，IDE 与分支上下文最终仍使用新结构的 XML。
+
+开始整理前记录以下信息。
+
+| 信息 | 用途 |
+|---|---|
+| 目标项目或 worktree 的绝对路径 | 避免操作同名工程或另一工作树 |
+| 目标 Git 分支、提交号、整理目的 | 确认分析的是哪一版代码 |
+| 操作当前项目文件，还是指定分支历史 | 明确写入范围 |
+| 现有分组 ID、书签 ID、描述和归属 | 尽量复用已有数据 |
+| 新增、改名、移动、增加引用、移除引用、彻底删除的清单 | 给出可审阅的具体变化 |
+
+整理书签不需要创建代码分支、提交、合并或推送 Git。只有任务包含这些操作时才执行。已有未提交代码不属于书签整理范围。
+
+## 2. 选择正确的分支范围
+
+当前项目文件是 IDE 最近保存的当前书签状态，Git 分支历史由原版上下文归档管理。按以下方式选择入口。
+
+| 目标 | 操作方式 |
+|---|---|
+| 整理正在使用的分支 | 先在 IDEA 中切到目标分支并确认书签已恢复，保存并关闭目标项目，再编辑 `.idea/bookmarks.xml` |
+| 整理已经保存的某个分支快照 | 关闭 IDEA，指定 `.contexts.zip` 和精确分支名导出、写回该归档项 |
+| 查看其他分支源码作为整理依据 | 使用 `git show 分支:路径` 等只读命令；无需切换当前工作树 |
+| 新分支没有历史上下文 | 按原机制先在 IDEA 中建立、保存该分支的书签上下文；工具不凭空创建分支历史 |
+
+直接在终端切换 Git 分支不等于当前书签文件已经恢复到该分支。当前文件模式会校验导出时的 Git 分支和提交号，但无法代替 IDEA 的上下文恢复。写回前确认目标项目已关闭；归档模式应关闭 IDEA，防止另一项目同时写同一归档。
+
+两个原有设置都影响分支恢复：`tasks.enable.bookmark.context.on.branch.switch` 控制书签是否参加上下文；`VcsConfiguration.RELOAD_CONTEXT` 控制分支切换后的上下文恢复。保留用户已有设置，不把开关关闭误判为数据丢失。
+
+## 3. 树形分组与书签身份
+
+按用户查找代码的目的组织树形分组，不把完整代码目录逐层复制成分组。优先复用现有主题，常见分类可以是“业务链路 / 阶段”“模块 / 关键入口”“问题 / 证据与修复”。没有书签内容时不批量创建空目录。
+
+结构变更遵守以下规则。
+
+| 操作 | 数据变更 |
+|---|---|
+| 新建分组 | 新 UUID、名称、父组 ID；顶层 `parentId` 为 `null` |
+| 重命名分组 | 只修改 `name`，保留 `id` |
+| 移动分组子树 | 修改根组的 `parentId`，后代和引用不变 |
+| 调整顺序 | 调整分组数组中同级项的顺序或组内 `bookmarkIds` 顺序 |
+| 一个书签加入多个组 | 在目标组引用已有书签 ID，保留原有归属 |
+| 更新代码定位 | 修改同一书签的 `attributes`，保留书签 ID |
+
+不同父组下可以重名，同级不可重名。定位分组使用 ID 和完整父子路径，不能只按名称查找。移动到自身、后代或制造同级重名都应在计划阶段排除。
+
+定位书签时同时核对文件、符号、代码文本和行号。行号从 0 开始；文件书签通常省略行号。普通文件与行书签使用 `com.intellij.ide.bookmark.providers.LineBookmarkProvider`，但 Java 包、VCS 等其他 provider 的属性必须保留，不按普通文件格式强行改写。
+
+相同位置复用一条书签记录。多个组引用同一 ID，共享同一份 Markdown。分支历史是独立快照，修改一个分支的描述不会自动修改其他分支归档中的描述。
+
+## 4. Markdown 描述
+
+首行写可以独立阅读的简短摘要，后面给出用途、源码依据和核验结果。保留用户已有的有效内容，补充事实与推断的区别。
+
+可使用以下模板；其中的路径、符号、分支和提交必须来自目标代码。
+
+```markdown
+读取入口：把源端记录转换为下游事件。
+
+## 作用
+说明这段代码负责的阶段，以及为什么需要从这里阅读。
+
+## 源码依据
+- 文件：`src/main/java/example/Reader.java`
+- 符号：`Reader.poll`
+- 分支：`feature/example`
+- 核验提交：`实际提交号`
+
+## 关键关系
+说明调用方、被调用方、状态变化或错误处理位置。
+
+## 核验情况
+写清已由源码证实的结论；待验证的推断单独标注。
+```
+
+在 JSON 中修改 `descriptionMarkdown`，由 JSON 编码器处理换行和引号。不要直接拼接 XML 转义字符，不把同一描述复制到各组，不为每个组创建一条相同位置的书签。
+
+## 5. 当前项目：导出、校验、写回
+
+下面命令在本插件源码仓库执行。目标项目先在 IDEA 中保存并关闭；路径替换为实际绝对路径。
+
+```bash
+python3 tools/bookmarks_store.py export \
+  --project "/项目绝对路径" \
+  --out "/临时目录/bookmarks-plan.json"
+```
+
+导出的 JSON 包含 `formatVersion`、`bookmarks`、`groups` 和 `_source`。`_source` 记录源文件路径、SHA-256、项目路径、Git 分支与提交号。**保留 `_source` 原值**，它用于拒绝过期计划和错误项目写入。
+
+一条书签被两个组引用时，核心结构如下。实际操作应修改导出文件，保留工具生成的 `_source`，不要把此片段当成可直接写回的完整文件。
+
+```json
+{
+  "formatVersion": 2,
+  "bookmarks": [{
+    "id": "bookmark-1",
+    "provider": "com.intellij.ide.bookmark.providers.LineBookmarkProvider",
+    "attributes": {"url": "file://$PROJECT_DIR$/src/Reader.java", "line": "0"},
+    "type": "DEFAULT",
+    "descriptionMarkdown": "读取入口\n\n负责读取与检查点提交。"
+  }],
+  "groups": [
+    {"id": "root", "parentId": null, "name": "同步链路", "isDefault": true, "bookmarkIds": ["bookmark-1"]},
+    {"id": "child", "parentId": "root", "name": "读取入口", "isDefault": false, "bookmarkIds": ["bookmark-1"]}
+  ]
+}
+```
+
+编辑后先校验，再写回。`--project-closed` 表示执行者已核实目标项目关闭，它不会自动关闭 IDE。
+
+```bash
+python3 tools/bookmarks_store.py validate --input "/临时目录/bookmarks-plan.json"
+python3 tools/bookmarks_store.py apply \
+  --project "/项目绝对路径" \
+  --input "/临时目录/bookmarks-plan.json" \
+  --project-closed
+```
+
+工具会核对源版本和 Git 状态、保留其他 XML 组件、备份原文件并原子替换。源文件、分支或提交变化后，重新导出并合并计划；不要修改 `_source.sha256` 绕过校验。文件锁用于防止多个 AI 工具同时写入，不能代替关闭 IDEA。
+
+重新打开项目后，检查分组树、几个实际跳转位置、共享描述和删除范围。当前项目的新状态在下一次原版分支上下文保存时进入该分支归档。
+
+## 6. 指定 Git 分支历史：导出和写回
+
+先找到实际的 `.contexts.zip`。工具读取原版 `__branch_context_分支名` 条目，不执行 Git checkout，也不改其他分支条目。
+
+```bash
+python3 tools/bookmarks_store.py branches --archive "/IDE配置目录/tasks/实际项目名.contexts.zip"
+python3 tools/bookmarks_store.py export \
+  --project "/项目绝对路径" \
+  --archive "/IDE配置目录/tasks/实际项目名.contexts.zip" \
+  --branch "feature/example" \
+  --out "/临时目录/branch-bookmarks.json"
+```
+
+按目标分支的源码核对定位，保留导出文件的 `_source`。旧归档若还没有格式 2，先在新版 IDEA 插件中恢复、保存该上下文；工具会拒绝直接改写旧格式。
+
+关闭 IDEA 后执行以下命令。
+
+```bash
+python3 tools/bookmarks_store.py validate --input "/临时目录/branch-bookmarks.json"
+python3 tools/bookmarks_store.py apply \
+  --project "/项目绝对路径" \
+  --archive "/IDE配置目录/tasks/实际项目名.contexts.zip" \
+  --branch "feature/example" \
+  --input "/临时目录/branch-bookmarks.json" \
+  --project-closed
+```
+
+归档模式只替换指定条目中的书签组件，其他分支、打开文件等上下文内容保留，原归档先备份。原归档变化后需要重新导出。重新启动 IDEA 后，通过原版分支切换恢复并验证目标快照。
+
+如果修改的是当前活动分支的历史快照，当前项目文件仍可能是旧状态。应在 IDEA 中切到其他分支后关闭、编辑目标历史，再切回恢复，避免离开目标分支时用旧的当前状态覆盖刚整理好的历史。
+
+Git 分支改名后，原机制不会自动把旧上下文重命名；先保留旧归档，再在新分支恢复、整理并保存新上下文。删除 Git 分支也不代表授权清空书签历史。工具不会替用户执行分支删除、历史清理或 Git 推送。
+
+## 7. 删除、归并与验收
+
+分类调整默认保留其他组的引用。删除动作按以下规则实施。
+
+| 动作 | AI 应修改的内容 |
+|---|---|
+| 从一个组移除 | 只删该组的引用；其他组、描述保留 |
+| 移除最后一个引用 | 同时删除书签表中的记录，效果是彻底删除 |
+| 彻底删除书签 | 删除书签记录及所有分组中的引用 |
+| 删除分组子树 | 删除全部后代组；只删除失去所有引用的书签记录 |
+| 归并重复书签 | 保留一个 ID、合并有效描述、替换全部引用，再删除冗余记录 |
+
+整理完成后输出目标项目、分支或归档项、核验提交、变更数量、保留的共享引用、备份位置及验证结果。不能只报告“JSON 格式正确”；至少复核实际代码位置，并在 IDE 恢复后确认树形结构与 Markdown。
+
+可把以下任务约定交给 AI，补齐实际范围后执行。
+
+```text
+按 docs/AI_BOOKMARKS.md 和 docs/STORAGE.md 整理目标项目的书签。
+先确认项目/worktree、Git 分支、提交号和写入范围，读取现有 ID、层级、描述与引用。
+基于目标分支源码整理业务主题和阅读链路，复用 ID，使用多组引用，保留有效 Markdown。
+说明具体变更；通过 bookmarks_store.py 导出、校验、备份并原子写回。
+写入前核实目标项目已关闭；修改分支归档时关闭 IDEA，限定精确归档项。
+保留导出元数据，遇到源版本变化重新导出合并；不绕过校验、不顺带改代码或操作 Git 历史。
+恢复到 IDEA 后复核分组树、共享描述和跳转位置，再报告结果与备份位置。
+```

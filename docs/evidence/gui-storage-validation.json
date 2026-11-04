@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-04",
+  "sdkVersion": "2026.2.4",
+  "sdkBuild": "262.11879.100",
+  "pluginVersion": "262.11879.100.4",
+  "formatVersion": 2,
+  "result": "PASS",
+  "localArchiveSha256": "ebbd6ba4c8933a7db1124fd1adb264a76d6e42ecc043d5fa8c42bdd228045b5c",
+  "method": "Original .3 isolated GUI workspace migrated through deprecated storage; final .4 ZIP loaded from isolated user plugins and GUI project reopened",
+  "ideInstallationModified": false,
+  "officialSdkCodesignVerified": true,
+  "installedJarsMatchFinalZip": [
+    "platform-bookmarks-plugin/lib/modules/intellij.platform.bookmarks.jar",
+    "platform-bookmarks-plugin/lib/modules/intellij.platform.debugger.impl.bookmarks.jar",
+    "platform-bookmarks-plugin/lib/modules/intellij.platform.vcs.log.impl.bookmarks.jar",
+    "platform-bookmarks-plugin/lib/platform-bookmarks-plugin.jar"
+  ],
+  "observations": {
+    "legacyGroupIdsAndParentsPreserved": true,
+    "legacyExactMarkdownPreserved": true,
+    "legacyTwoReferencesPreserved": true,
+    "nativeMarkdownEditorOriginalTextObserved": true,
+    "finalReopenBothGroupsChecked": true,
+    "finalReopenCanonicalIdsAndMarkdownUnchanged": true,
+    "legacyBackupCreated": true,
+    "descriptionMarkdownFileCreated": false
+  },
+  "canonicalBookmarks": 1,
+  "groups": 6,
+  "references": 2,
+  "notes": "Local macOS GUI ZIP. CI Release has its own installer SHA-256 and exact-ZIP runtime report; branch lifecycle was checked using the original platform tracker in the IDE process."
+}

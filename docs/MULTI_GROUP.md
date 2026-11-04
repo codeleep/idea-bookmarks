@@ -40,3 +40,7 @@ python3 tools/runtime_smoke.py --idea-home "/你的路径/IntelliJ IDEA.app"
 ```
 
 运行检查覆盖多层分组的多组归属、独立复选框及渲染、共享原生 Markdown 文档、从部分组移除、最后一个引用直接删除、所有组删除、行位置变化、XML 恢复和不同旧描述的无损合并。GUI 观测记录见 `docs/evidence/gui-multigroup-validation.json`。
+
+## 5. 格式 2 与 Git 分支
+
+版本 `.4` 将组内书签副本改为独立书签记录与 ID 引用；旧数据自动迁移。Git 分支沿用原版上下文机制，新适配器完整恢复层级、共享描述与引用。详见 [存储说明](STORAGE.md) 和 [AI 整理指南](AI_BOOKMARKS.md)。

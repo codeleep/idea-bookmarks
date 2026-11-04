@@ -8,7 +8,9 @@
 |---|---|
 | 书签管理、列表、默认分组、助记符分配 | `modules/core/src/com/intellij/ide/bookmark/BookmarksManagerImpl.kt` |
 | 树形分组创建、迁移、移动、循环检测 | `modules/core/src/com/intellij/ide/bookmark/BookmarksManagerImpl.kt` |
-| 保存结构、分组和书签状态 | `modules/core/src/com/intellij/ide/bookmark/state.kt` |
+| 版本、独立书签表、分组树和引用 | `modules/core/src/com/intellij/ide/bookmark/state.kt` |
+| 归一化、格式校验与旧状态备份 | `modules/core/src/com/intellij/ide/bookmark/BookmarkStorageFormat.kt` |
+| 原版分支上下文协议的升级适配器 | `modules/core/src/com/intellij/ide/bookmark/context/BookmarkContextProvider.kt` |
 | 行编辑、文件变化、书签位置跟踪 | `modules/core/src/com/intellij/ide/bookmark/providers/LineBookmarkProvider.kt` |
 | 文件和行书签对象 | `modules/core/src/com/intellij/ide/bookmark/providers/` |
 | 编辑器侧栏书签绘制与刷新 | `GutterLineBookmarkRenderer.kt`、`GutterLineBookmarkUpdater.kt`，位于核心 `bookmark` 包 |
@@ -36,7 +38,7 @@
 | `official/platform/lang-api/resources/messages/BookmarkBundle.properties` | 本地化文本 | 使用目标 SDK 资源 |
 | `official/platform/favoritesTreeView/` | Favorites URL 桥接 | 使用目标 SDK |
 | `official/java/java-bookmarks/` | Java 包书签 | 使用目标 SDK 的 Java 插件模块 |
-| `official/platform/tasks-platform-impl/tasks.impl.bookmarks/` | 任务与分支上下文 | 使用目标 SDK 的任务模块 |
+| `official/platform/tasks-platform-impl/tasks.impl.bookmarks/` | 任务与分支上下文 | 原分支监听器和归档使用 SDK；书签适配器由本插件升级 |
 | `official/platform/platform-tests/testSrc/com/intellij/ide/` | 官方书签回归测试 | 保留原始测试，未把整个平台测试框架抽成此工程的运行依赖 |
 | `official/platform/bookmarks/backend/`、`frontend/` | 远程开发公开实现 | 保留，桌面 ZIP 不编译 |
 | `official/platform/platform-resources/src/keymaps/` | 默认键位绑定 | 官方 IDEA 已注册，沿用相同 Action ID |
@@ -67,6 +69,14 @@ flowchart LR
 
 ## 5. 多组引用与共享描述
 
-`InManagerInfo` 为同一书签保存一个描述、助记符和行标记；多个组引用它。`setBookmarkGroups()` 先添加新引用，再移除取消的引用，避免换组时丢失描述与标记。状态文件仍在各组中记录书签与描述，读取后复用同一书签对象。旧版存在不同组描述时，保留各段原文及原分组标题后合并；再次保存恢复不重复合并。
+`InManagerInfo` 为同一书签保存一个描述、助记符和行标记；多个组引用它。`setBookmarkGroups()` 先添加新引用，再移除取消的引用，避免换组时丢失描述与标记。格式 2 在顶层独立保存书签记录和描述，各组只保存书签 ID 引用。旧版存在不同组描述时，保留各段原文及原分组标题后合并；再次保存恢复不重复合并。
 
 `BookmarkDeletion.needsChoice()` 判断是否存在多组引用。工具窗口删除和编辑器 Toggle Bookmark 共用删除范围提示；`deleteOccurrences()` 执行当前组移除或所有组删除。组本身的删除仍保留其他组中的引用。
+
+## 6. 新存储和 AI 入口
+
+当前项目存储迁到 `.idea/bookmarks.xml`，原 `PRODUCT_WORKSPACE_FILE` 标记为 deprecated storage。`ManagerState.formatVersion` 区分旧列表与新引用结构；读取新格式时先校验再改变模型，异步恢复按代次取消过期任务。未知 provider 记录保留在状态中。
+
+平台原有的 `BranchContextTracker` 和 `WorkingContextManager` 保持不变。本插件注册同 ID 的新版书签上下文适配器，移除原来会展开树结构的那个适配器，运行中只有一个 `bookmarks` 提供器。旧归档、新归档和原有开关继续使用相同协议。
+
+AI 使用 `tools/bookmarks_store.py` 编辑导出的 JSON，工具负责源版本检查、XML 编码、归档范围、备份及原子替换。完整格式见 [存储说明](STORAGE.md)，操作规范见 [AI 指南](AI_BOOKMARKS.md)。

@@ -161,7 +161,7 @@ def build(sdk):
               "sha256": hashlib.sha256(archive_path.read_bytes()).hexdigest(),
               "runtimeValidated": False,
               "excluded": ["RPC/backend/frontend", "non-public split client"],
-              "reusedFromSdk": ["public bookmark API", "Favorites bridge", "Java package adapter", "Tasks context adapter"]}
+              "reusedFromSdk": ["public bookmark API", "Favorites bridge", "Java package adapter", "Tasks branch tracker and context archive"]}
     (output / "build-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     print(f"BUILT {archive_path}")
     return plugin
