@@ -1,7 +1,7 @@
 <idea-plugin require-restart="true">
   <id>intellij.bookmarks.plugin</id>
   <name>Bookmarks Manager (Local Source Build)</name>
-  <version>262.11879.100.5</version>
+  <version>262.11879.100.6</version>
   <idea-version since-build="262.11879.100" until-build="262.11879.100"/>
   <description>Marks lines of code, files, folders, classes, and editor tabs for quick navigation,
     supports anonymous and mnemonic bookmarks accessible via keyboard shortcuts,

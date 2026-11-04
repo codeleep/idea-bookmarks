@@ -13,7 +13,7 @@
 | 上游提交 | `32cd543bd4ee8e36118f392f28d07da04078849d` |
 | 插件 ID | `intellij.bookmarks.plugin` |
 | 插件名称 | `Bookmarks Manager (Local Source Build)` |
-| 插件版本 | `262.11879.100.5` |
+| 插件版本 | `262.11879.100.6` |
 | 验证环境 | 官方 IDEA 2026.2.4，macOS Apple Silicon，Java 25 |
 
 **安装采用 IDEA 的用户级插件更新机制。** 沿用官方插件 ID、Action ID 和服务接口，使用带稳定 ID 的独立书签表、分组树及引用结构，开发版本在用户插件目录中优先加载。IDE 中只有一套 Bookmarks，现有 Java、VCS、调试器和任务上下文可以继续使用相同接口。卸载这个用户级更新并重启后，IDEA 会使用安装目录内原有的内置版本；新格式数据的降级边界见 [存储说明](docs/STORAGE.md)。
@@ -63,7 +63,7 @@ SDK 的绝对路径仅写入本地 `.idea/` 和根目录 `.iml`，这两类文�
 
 ## 4. 构建与开发运行
 
-构建安装包，产物为 `dist/bookmarks-desktop-262.11879.100.5.zip`。
+构建安装包，产物为 `dist/bookmarks-desktop-262.11879.100.6.zip`。
 
 ```bash
 ./gradlew buildPlugin
@@ -110,16 +110,16 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 
 1. 确认 `Help → About` 中的版本为 IDEA 2026.2.4，构建号 `262.11879.100`。
 2. 打开 `Settings → Plugins → 齿轮 → Install Plugin from Disk`。
-3. 选择 `dist/bookmarks-desktop-262.11879.100.5.zip`。
+3. 选择 `dist/bookmarks-desktop-262.11879.100.6.zip`。
 4. 确认本地构建插件的来源提示，应用设置并重启 IDEA。
-5. 已安装插件中应显示 `Bookmarks Manager (Local Source Build)`，版本 `262.11879.100.5`。
+5. 已安装插件中应显示 `Bookmarks Manager (Local Source Build)`，版本 `262.11879.100.6`。
 6. 打开 `View → Tool Windows → Bookmarks`，添加和导航书签。
 
 本机旧版 IDEA 2025.2.1 不在兼容范围内。用户插件目录由 IDEA 管理，安装过程不需要拷贝文件到 `.app/Contents/plugins` 或修改 IDEA 的 JAR。
 
 ## 7. Markdown 描述与树形分组
 
-选中行书签或文件书签，点击“编辑 Markdown 描述…”或使用书签的编辑动作。描述会在 **IDEA 自带的 Markdown 编辑页**打开，支持原生语法高亮、格式化、补全和编辑/预览布局切换。编辑内容即时保存到各组共享的书签记录，可使用 IDEA 的撤销功能修改；关闭编辑页不会丢失已保存描述。
+选中行书签或文件书签，点击“编辑”或使用书签的编辑动作。描述会在 **IDEA 自带的 Markdown 编辑页**打开，支持原生语法高亮、格式化、补全和编辑/预览布局切换。编辑内容即时保存到各组共享的书签记录，可使用 IDEA 的撤销功能修改；关闭编辑页不会丢失已保存描述。
 
 编辑页使用内存中的 Markdown 文档，项目目录不会新增 `.md` 文件。同一个书签可以同时属于多个组，所有组共享一份 Markdown 描述和同一个编辑缓冲区。在任意组修改会同步更新；移除某个组的引用后，其他组仍可查看和编辑。完整原文保存在书签的 `description` 字段，中文、多行、空行和 Markdown 标记均保留。Bookmarks 工具窗口下方提供只读摘要预览，树节点和侧栏提示只显示描述的单行摘要。原生编辑页的渲染、图片和扩展能力遵循内置 Markdown 插件的设置；工具窗口的轻量预览支持常用格式，不自动加载图片。
 
@@ -160,7 +160,7 @@ Git 分支继续沿用官方 `BranchContextTracker → WorkingContextManager` �
 ./gradlew sourceZip
 ```
 
-产物为 `dist/idea-bookmarks-262.11879.100.5-sources.zip`。源码归档包含可编辑模块、官方公开源码快照、Wrapper、工具、测试和文档；官方 IDEA SDK、下载缓存及本机配置不放入归档。
+产物为 `dist/idea-bookmarks-262.11879.100.6-sources.zip`。源码归档包含可编辑模块、官方公开源码快照、Wrapper、工具、测试和文档；官方 IDEA SDK、下载缓存及本机配置不放入归档。
 
 ## 10. 来源与许可
 
