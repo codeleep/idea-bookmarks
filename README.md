@@ -86,14 +86,16 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 
 修改代码后重新构建并重启开发实例。发布自己的下一次本地更新前，在 `plugin/plugin.xml` 中递增 `<version>`。当前兼容范围锁定 `262.11879.100`，更换目标 SDK 时需要重新编译和运行验证。
 
-## 5. GitHub 一键构建与下载
+## 5. GitHub Release 与一键构建
 
-只需要安装插件时，可以直接在 [GitHub Actions](https://github.com/codeleep/idea-bookmarks/actions/workflows/build-plugin.yml) 中构建下载。
+已发布版本可直接在 [Releases](https://github.com/codeleep/idea-bookmarks/releases) 中下载；[最新版本](https://github.com/codeleep/idea-bookmarks/releases/latest) 的 Assets 里选择 `bookmarks-desktop-版本号.zip`。
 
 1. 打开仓库的 **Actions → Build IDEA Bookmarks Plugin → Run workflow**。
-2. 选择默认分支，点击 **Run workflow**。
-3. 运行成功后，在 Summary 的下载链接或 Artifacts 中下载 `bookmarks-desktop-版本号.zip`。
+2. 选择默认分支，保持 `publish_release` 勾选，点击 **Run workflow**。
+3. 构建验证通过后自动创建对应版本的 Release，在 Summary 的版本下载链接或 Releases 中下载安装包。
 4. 在 IDEA 中执行 **Install Plugin from Disk**，直接选择这个 ZIP，然后重启。
+
+默认分支推送新版本也会自动构建并发布；版本标签为 `v` 加 `plugin/plugin.xml` 中的版本号。已经发布的同版本不会被覆盖，更新功能后需要递增版本号。Release 附件保留在对应版本页面。
 
 插件 ZIP 采用原文件上传，下载后无需解压。`idea-bookmarks-版本号-sources.zip` 是源码包；`bookmarks-build-reports` 包含校验值和本轮运行报告。下载 Actions 产物需要登录 GitHub，默认保留 30 天。
 

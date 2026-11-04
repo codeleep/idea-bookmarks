@@ -6,15 +6,21 @@
 
 1. 登录 GitHub，进入仓库的 Actions 页面。
 2. 选择 **Build IDEA Bookmarks Plugin**，点击 **Run workflow**。
-3. 选择默认分支并确认运行。
+3. 选择默认分支，保持 `publish_release` 勾选并确认运行；取消勾选可仅构建。
 4. 等待工作流显示成功，打开本次运行的 Summary。
-5. 点击“下载可安装的插件 ZIP”，或者在 Artifacts 中下载 `bookmarks-desktop-版本号.zip`。
+5. 构建与 Release 任务都成功后，点击版本下载链接；也可到 [Releases](https://github.com/codeleep/idea-bookmarks/releases) 选择对应版本。
 
 GitHub 要求带 `workflow_dispatch` 的工作流存在于默认分支，页面才显示手动运行入口。[官方说明](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
 
-## 2. 产物与安装
+## 2. 自动发布与版本下载
 
-每次成功构建会提供以下产物，默认保留 30 天。下载 Actions 产物需要登录 GitHub。
+默认分支构建验证通过后，自动按 `plugin/plugin.xml` 中的版本创建 Release，例如 `v262.11879.100.2`。匹配插件版本的 `v*` 标签构建也会发布。Pull Request 和其他分支只构建，手动运行可取消 `publish_release` 以跳过发布。
+
+在 [版本列表](https://github.com/codeleep/idea-bookmarks/releases) 中选择版本，或打开 [最新版本](https://github.com/codeleep/idea-bookmarks/releases/latest)。每个 Release 的 Assets 包含可安装 ZIP、完整源码 ZIP、`SHA256SUMS`、构建报告和 IDE 内运行报告。这些附件保留在对应 Release 中，不受 Actions 产物 30 天保留期影响。
+
+发布先创建草稿并上传附件，确认上传大小与 GitHub 返回的校验值后再公开。重复构建已发布版本时保留原附件；发布新代码请递增版本号。已有版本标签不会移动，失败重试只会恢复同一提交的未公开草稿。发布接口使用 GitHub CLI 的 [创建](https://cli.github.com/manual/gh_release_create)、[上传](https://cli.github.com/manual/gh_release_upload) 和 [公开草稿](https://cli.github.com/manual/gh_release_edit) 命令。
+
+每次成功构建也保留以下 Actions 产物，默认保留 30 天。下载 Actions 产物需要登录 GitHub。
 
 | 产物 | 用途 |
 |---|---|
@@ -41,9 +47,11 @@ GitHub 要求带 `workflow_dispatch` 的工作流存在于默认分支，页面�
 | SDK 校验 | 锁定官方归档的 SHA-256，下载后校验，匹配后解压 |
 | 编译器 | SDK 自带 Kotlin 2.4 与 Java 25 |
 | 编译入口 | `python3 tools/ci_build.py` |
+| 发布入口 | `python3 tools/publish_release.py` |
+| 版本规则 | 标签 `v` + 插件版本；同版本已发布则保留原附件 |
 | 工作流超时 | 30 分钟 |
 | 触发方式 | 手动、指定分支 Push、`v*` 标签 Push、Pull Request |
-| 工作流权限 | `contents: read`，使用平台提供的制品上传能力 |
+| 工作流权限 | 构建任务 `contents: read`；独立发布任务 `contents: write` |
 | 仓库密钥 | 无需自定义 Secrets 或个人访问令牌 |
 
 SDK 只用于本轮构建，不打进安装包或源码包。第一次运行需要下载完整 SDK。产物只在编译及 IDE 内检查全部成功后上传；失败时可下载 diagnostics 排查。
@@ -66,8 +74,14 @@ python3 tools/ci_build.py
 
 ## 5. 维护约定
 
-修改插件功能后，在 `plugin/plugin.xml` 中递增版本并推送。工作流会从描述文件读取版本并命名 ZIP。
+修改插件功能后，在 `plugin/plugin.xml` 中递增版本并推送到默认分支。工作流会从描述文件读取版本、命名 ZIP 并自动创建对应 Release。手动推送版本标签时，标签必须与描述文件匹配；例如当前版本使用 `v262.11879.100.2`。
 
 升级 SDK 时，更新 `.github/idea-sdk.json` 中的版本、构建号、下载地址和官方 SHA-256，并同步 `plugin/plugin.xml` 的兼容范围及构建参数。脚本会检查锁定构建号与描述文件的一致性，避免使用错误 SDK 生成安装包。
+
+发布规则的本地检查命令如下。
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py' -v
+```
 
 在 Linux 上运行 IDE 内检查时，从 SDK 的 `product-info.json` 读取匹配系统与 CPU 架构的启动配置及 VM options 路径，兼容 Linux 的 `idea64.vmoptions` 和 macOS 的 `idea.vmoptions`。

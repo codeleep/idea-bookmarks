@@ -2,6 +2,11 @@ name: Build IDEA Bookmarks Plugin
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish a versioned Release after verification (default branch only)
+        type: boolean
+        default: true
   push:
     branches: [main, master, 'codex/**']
     tags: ['v*']
@@ -12,18 +17,26 @@ permissions:
 
 concurrency:
   group: bookmarks-build-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     name: Build and verify installable ZIP
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    outputs:
+      version: ${{ steps.build.outputs.version }}
+      plugin_artifact_id: ${{ steps.plugin.outputs.artifact-id }}
+      source_artifact_id: ${{ steps.sources.outputs.artifact-id }}
+      reports_artifact_id: ${{ steps.reports.outputs.artifact-id }}
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Verify release publication rules
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
 
       - name: Install headless IDE runtime libraries
         run: |
@@ -54,6 +67,7 @@ jobs:
           retention-days: 30
 
       - name: Upload checksums and validation reports
+        id: reports
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bookmarks-build-reports
@@ -95,3 +109,48 @@ jobs:
             build/runtime-sandbox/log/idea.log
           if-no-files-found: ignore
           retention-days: 7
+
+  release:
+    name: Publish versioned GitHub Release
+    needs: build
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_dispatch' || inputs.publish_release) &&
+      (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: bookmarks-release-${{ needs.build.outputs.version }}
+      cancel-in-progress: false
+    steps:
+      - name: Check out the verified commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download installable plugin without decompressing
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.plugin_artifact_id }}
+          path: release-assets
+          skip-decompress: true
+
+      - name: Download complete source without decompressing
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.source_artifact_id }}
+          path: release-assets
+          skip-decompress: true
+
+      - name: Download validation reports
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.reports_artifact_id }}
+          path: release-assets/reports
+
+      - name: Verify and publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/publish_release.py
