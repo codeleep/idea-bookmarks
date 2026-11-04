@@ -13,7 +13,7 @@
 | 上游提交 | `32cd543bd4ee8e36118f392f28d07da04078849d` |
 | 插件 ID | `intellij.bookmarks.plugin` |
 | 插件名称 | `Bookmarks Manager (Local Source Build)` |
-| 插件版本 | `262.11879.100.4` |
+| 插件版本 | `262.11879.100.5` |
 | 验证环境 | 官方 IDEA 2026.2.4，macOS Apple Silicon，Java 25 |
 
 **安装采用 IDEA 的用户级插件更新机制。** 沿用官方插件 ID、Action ID 和服务接口，使用带稳定 ID 的独立书签表、分组树及引用结构，开发版本在用户插件目录中优先加载。IDE 中只有一套 Bookmarks，现有 Java、VCS、调试器和任务上下文可以继续使用相同接口。卸载这个用户级更新并重启后，IDEA 会使用安装目录内原有的内置版本；新格式数据的降级边界见 [存储说明](docs/STORAGE.md)。
@@ -63,7 +63,7 @@ SDK 的绝对路径仅写入本地 `.idea/` 和根目录 `.iml`，这两类文�
 
 ## 4. 构建与开发运行
 
-构建安装包，产物为 `dist/bookmarks-desktop-262.11879.100.4.zip`。
+构建安装包，产物为 `dist/bookmarks-desktop-262.11879.100.5.zip`。
 
 ```bash
 ./gradlew buildPlugin
@@ -110,9 +110,9 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 
 1. 确认 `Help → About` 中的版本为 IDEA 2026.2.4，构建号 `262.11879.100`。
 2. 打开 `Settings → Plugins → 齿轮 → Install Plugin from Disk`。
-3. 选择 `dist/bookmarks-desktop-262.11879.100.4.zip`。
+3. 选择 `dist/bookmarks-desktop-262.11879.100.5.zip`。
 4. 确认本地构建插件的来源提示，应用设置并重启 IDEA。
-5. 已安装插件中应显示 `Bookmarks Manager (Local Source Build)`，版本 `262.11879.100.4`。
+5. 已安装插件中应显示 `Bookmarks Manager (Local Source Build)`，版本 `262.11879.100.5`。
 6. 打开 `View → Tool Windows → Bookmarks`，添加和导航书签。
 
 本机旧版 IDEA 2025.2.1 不在兼容范围内。用户插件目录由 IDEA 管理，安装过程不需要拷贝文件到 `.app/Contents/plugins` 或修改 IDEA 的 JAR。
@@ -160,7 +160,7 @@ Git 分支继续沿用官方 `BranchContextTracker → WorkingContextManager` �
 ./gradlew sourceZip
 ```
 
-产物为 `dist/idea-bookmarks-262.11879.100.4-sources.zip`。源码归档包含可编辑模块、官方公开源码快照、Wrapper、工具、测试和文档；官方 IDEA SDK、下载缓存及本机配置不放入归档。
+产物为 `dist/idea-bookmarks-262.11879.100.5-sources.zip`。源码归档包含可编辑模块、官方公开源码快照、Wrapper、工具、测试和文档；官方 IDEA SDK、下载缓存及本机配置不放入归档。
 
 ## 10. 来源与许可
 
