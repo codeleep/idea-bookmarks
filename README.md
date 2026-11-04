@@ -35,6 +35,8 @@
 | `tests/runtime/` | 在官方 IDEA 进程中运行的插件冒烟检查 |
 | `docs/SOURCE_MAP.md` | 业务入口与 SDK 依赖边界 |
 | `docs/VALIDATION.md` | 安装和运行验证记录 |
+| `.github/workflows/build-plugin.yml` | 可手动运行的 GitHub Actions 构建与产物上传 |
+| `docs/CI.md` | 云端构建、下载、配置与复现说明 |
 
 本次 ZIP 包含核心、调试器和 VCS 三个桌面模块。公开 API、Favorites 桥接、Java 包及任务上下文适配由官方 SDK 提供，对应公开源码已保留。`modules/core/src/rpc/` 以及 `official/` 中的 backend/frontend 源码保留供参考，当前桌面构建不包含 Remote Development。官方描述引用的 `intellij.platform.frontend.split.bookmarks` 在该标签的 Community 公开仓库中没有实现源码，因此没有伪造或以反编译代码补齐。
 
@@ -84,7 +86,20 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 
 修改代码后重新构建并重启开发实例。发布自己的下一次本地更新前，在 `plugin/plugin.xml` 中递增 `<version>`。当前兼容范围锁定 `262.11879.100`，更换目标 SDK 时需要重新编译和运行验证。
 
-## 5. 安装到官方 IDEA
+## 5. GitHub 一键构建与下载
+
+只需要安装插件时，可以直接在 [GitHub Actions](https://github.com/codeleep/idea-bookmarks/actions/workflows/build-plugin.yml) 中构建下载。
+
+1. 打开仓库的 **Actions → Build IDEA Bookmarks Plugin → Run workflow**。
+2. 选择默认分支，点击 **Run workflow**。
+3. 运行成功后，在 Summary 的下载链接或 Artifacts 中下载 `bookmarks-desktop-版本号.zip`。
+4. 在 IDEA 中执行 **Install Plugin from Disk**，直接选择这个 ZIP，然后重启。
+
+插件 ZIP 采用原文件上传，下载后无需解压。`idea-bookmarks-版本号-sources.zip` 是源码包；`bookmarks-build-reports` 包含校验值和本轮运行报告。下载 Actions 产物需要登录 GitHub，默认保留 30 天。
+
+工作流会自动下载并校验固定版本的官方 Linux x64 SDK，使用它自带的编译器，完成原始源码校验、三个插件模块编译、IDE 进程内检查和源码归档。推送到 `main`、`master`、`codex/**` 分支或 `v*` 标签，以及 Pull Request 也会触发构建。详细配置和复现命令见 [CI 使用说明](docs/CI.md)。
+
+## 6. 安装到官方 IDEA
 
 安装步骤使用 IDEA 自带的插件管理器。
 
@@ -97,7 +112,7 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 
 本机旧版 IDEA 2025.2.1 不在兼容范围内。用户插件目录由 IDEA 管理，安装过程不需要拷贝文件到 `.app/Contents/plugins` 或修改 IDEA 的 JAR。
 
-## 6. Markdown 描述与树形分组
+## 7. Markdown 描述与树形分组
 
 选中行书签或文件书签，点击“编辑 Markdown 描述…”或使用书签的编辑动作。描述会在 **IDEA 自带的 Markdown 编辑页**打开，支持原生语法高亮、格式化、补全和编辑/预览布局切换。编辑内容即时保存到当前分组中的当前书签，可使用 IDEA 的撤销功能修改；关闭编辑页不会丢失已保存描述。
 
@@ -112,7 +127,7 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 
 升级会扩展项目书签状态。若后续卸载或降级，旧版没有树形分组和 Markdown 展示能力；需要保留层级时，应先备份项目书签状态。当前工程支持本地桌面模式。
 
-## 7. 验证与源码归档
+## 8. 验证与源码归档
 
 检查原始快照并运行实际 IDE 内的冒烟检查。
 
@@ -130,6 +145,6 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 
 产物为 `dist/idea-bookmarks-262.11879.100.2-sources.zip`。源码归档包含可编辑模块、官方公开源码快照、Wrapper、工具、测试和文档；官方 IDEA SDK、下载缓存及本机配置不放入归档。
 
-## 8. 来源与许可
+## 9. 来源与许可
 
 原始源码文件的 JetBrains 版权和 Apache 2.0 声明保持原样。工程保留 `NOTICE.txt`、`LICENSE-APACHE-2.0.txt` 和上游 `official/LICENSE.txt`。本地构建产物使用明确的开发版名称和供应商信息。

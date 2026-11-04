@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 from pathlib import Path
 import shutil
 import subprocess
@@ -42,8 +43,12 @@ def smoke(sdk):
   <depends>com.intellij.modules.platform</depends><depends>intellij.bookmarks.plugin</depends>
   <extensions defaultExtensionNs="com.intellij"><appStarter id="bookmarks-source-smoke" implementation="bookmarks.validation.BookmarkSmokeStarter"/></extensions>
 </idea-plugin>""")
-    launch = next(item for item in info["launch"] if item["os"] == "macOS") if os.uname().sysname == "Darwin" else info["launch"][0]
-    vm = [line.strip() for line in (sdk / "bin/idea.vmoptions").read_text().splitlines() if line.strip() and not line.startswith("#")]
+    system = {"Darwin": "macOS", "Linux": "Linux", "Windows": "Windows"}[platform.system()]
+    architectures = {"aarch64", "arm64"} if platform.machine().lower() in {"aarch64", "arm64"} else {"amd64", "x86_64", "x64"}
+    launch = next(item for item in info["launch"] if item["os"] == system and item.get("arch", "").lower() in architectures)
+    info_root = sdk / "Resources" if (sdk / "Resources/product-info.json").is_file() else sdk
+    vm_options = info_root / launch["vmOptionsFilePath"]
+    vm = [line.strip() for line in vm_options.read_text().splitlines() if line.strip() and not line.startswith("#")]
     jvm_arguments = [value.replace("$APP_PACKAGE", str(sdk.parent)).replace("$IDE_HOME", str(sdk))
                      for value in launch.get("additionalJvmArguments", [])]
     command = [str(java_home / "bin/java"), *vm, *jvm_arguments,

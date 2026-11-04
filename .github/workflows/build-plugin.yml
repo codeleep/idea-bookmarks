@@ -1,0 +1,97 @@
+name: Build IDEA Bookmarks Plugin
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master, 'codex/**']
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bookmarks-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and verify installable ZIP
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install headless IDE runtime libraries
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core libfreetype6 libxi6 libxrender1 libxtst6
+
+      - name: Build, run IDE smoke checks and package source
+        id: build
+        run: python3 tools/ci_build.py
+
+      # Upload the plugin ZIP itself, rather than wrapping it in a second ZIP.
+      - name: Upload installable plugin ZIP
+        id: plugin
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: ${{ steps.build.outputs.plugin_zip }}
+          archive: false
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload complete source ZIP
+        id: sources
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: ${{ steps.build.outputs.source_zip }}
+          archive: false
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload checksums and validation reports
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bookmarks-build-reports
+          path: |
+            dist/SHA256SUMS
+            build/build-report.json
+            build/runtime-validation.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Show download and installation instructions
+        env:
+          PLUGIN_URL: ${{ steps.plugin.outputs.artifact-url }}
+          SOURCE_URL: ${{ steps.sources.outputs.artifact-url }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          text = (
+              '## Bookmarks 构建通过\n\n'
+              f'- [下载可安装的插件 ZIP]({os.environ["PLUGIN_URL"]})\n'
+              f'- [下载完整源码 ZIP]({os.environ["SOURCE_URL"]})\n\n'
+              '安装：IDEA 2026.2.4 → Settings → Plugins → 齿轮 → Install Plugin from Disk。'
+              '直接选择下载的 bookmarks-desktop ZIP，无需解压。\n\n'
+              '保持 IDEA 自带的 Markdown 插件启用，然后重启 IDEA。\n'
+          )
+          with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a') as stream:
+              stream.write(text)
+          PY
+
+      - name: Upload diagnostics if build fails
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bookmarks-build-diagnostics
+          path: |
+            build/compile.log
+            build/runtime-sandbox/process.log
+            build/runtime-sandbox/log/idea.log
+          if-no-files-found: ignore
+          retention-days: 7
