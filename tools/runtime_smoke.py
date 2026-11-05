@@ -25,11 +25,12 @@ def smoke(sdk):
     from bookmarks_store import encode_xml, write_state
     fixture = {"formatVersion": 2,
                "bookmarks": [{"id": "ai-stable-bookmark", "provider": "com.intellij.ide.bookmark.providers.LineBookmarkProvider",
-                              "attributes": {"url": (sandbox / "project/sample.txt").as_uri(), "line": "1", "lineText": "second line"},
+                              "attributes": {"url": "file://" + (sandbox / "project/sample.txt").as_posix(), "line": "1", "lineText": "second line"},
                               "type": "LETTER_Z", "descriptionMarkdown": "# AI 原文\n\n**共享** <tag> & 中文\n"}],
                "groups": [{"id": "ai-root", "parentId": None, "name": "AI 根组", "isDefault": False, "bookmarkIds": ["ai-stable-bookmark"]},
                           {"id": "ai-child", "parentId": "ai-root", "name": "AI 子组", "isDefault": True, "bookmarkIds": ["ai-stable-bookmark"]}]}
     (sandbox / "ai-import.xml").write_bytes(encode_xml(write_state(fixture, "ManagerState")))
+    (sandbox / "ai-import.json").write_text(json.dumps(fixture, ensure_ascii=False, indent=2), encoding="utf-8")
     archive = ROOT / f"dist/bookmarks-desktop-{PLUGIN_VERSION}.zip"
     with zipfile.ZipFile(archive) as package:
         package.extractall(sandbox / "plugins")
@@ -76,7 +77,12 @@ def smoke(sdk):
     if result.returncode or not (sandbox / "result.txt").is_file():
         print(log.read_text()[-18000:])
         raise SystemExit(result.returncode or 1)
-    from bookmarks_store import load_source, apply_model
+    from bookmarks_store import load_source, apply_model, read_json, validate, parse_state
+    portable = validate(read_json(sandbox / "portable-export.json"))
+    if parse_state(write_state(portable, "ManagerState")) != portable:
+        raise SystemExit("IDE portable JSON is not lossless through the offline AI serializer")
+    if not portable["bookmarks"][0]["attributes"]["url"].startswith("file://$PROJECT_DIR$/"):
+        raise SystemExit("IDE portable JSON leaked the original project path")
     contexts = sandbox / "config/tasks/bookmarks_validation.contexts.zip"
     model, _, _ = load_source(sandbox / "project", contexts, "validation-a")
     record = next(record for record in model["bookmarks"] if record["type"] == "DIGIT_7")
@@ -90,6 +96,7 @@ def smoke(sdk):
         raise SystemExit(result.returncode or 1)
     print((sandbox / "result.txt").read_text())
     passed = [line[5:] for line in log.read_text().splitlines() if line.startswith("PASS ")]
+    passed.append("IDE portable JSON accepted losslessly by offline AI schema and XML writer")
     report = {"result": "PASS", "sdkVersion": info["version"], "sdkBuild": info["buildNumber"],
               "pluginVersion": PLUGIN_VERSION, "archiveSha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
               "installation": "isolated user plugins directory", "ideInstallationModified": False,

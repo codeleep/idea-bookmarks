@@ -1,0 +1,26 @@
+{
+  "pluginVersion": "262.11879.100.7",
+  "sdkVersion": "2026.2.4",
+  "sdkBuild": "262.11879.100",
+  "date": "2026-11-05",
+  "archiveSha256": "969a67850fa964af2b61c1420cadf8f99e0d4380679409fae978c3e7162c53a3",
+  "installation": "isolated user plugin directory; official IDE untouched",
+  "checks": {
+    "findActionAndToolbarRegistered": true,
+    "nativeOpenFileDialogAcceptedPortableJson": true,
+    "previewShowsAddedGroupsAndReferences": true,
+    "nativeDiffShowsReadOnlyBeforeAndAfter": true,
+    "guiMergeCreatedBackup": true,
+    "guiBookmarkNavigationPosition": "2:1 in sample.txt",
+    "guiJsonExportGroups": 3,
+    "guiJsonExportCanonicalBookmarks": 1,
+    "guiJsonExportReferences": 2,
+    "guiJsonExportProjectRelativeUrl": "file://$PROJECT_DIR$/sample.txt",
+    "guiMarkdownPreservesExactDescription": true,
+    "guiMarkdownHasRelativeLineLink": true,
+    "allFourInstalledJarsMatchZip": true,
+    "newErrorOrSevereLogLines": 0,
+    "isolatedTestInstanceExitedNormally": true
+  },
+  "boundaries": "Subtree export, replacement and conflict strategies additionally exercised by IDE runtime checks; GUI exercised full export and merge."
+}
