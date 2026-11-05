@@ -85,6 +85,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         verifyAiArchiveAfterRestart(root, filePath);
         return;
       }
+      AnchorSmokeStarter.verify(root);
       edt(() -> {
         project = ProjectManagerEx.getInstanceEx().newProject("bookmarks-validation", filePath.getParent().toString(), false, false);
         manager = (BookmarksManagerImpl)BookmarksManager.getInstance(project);

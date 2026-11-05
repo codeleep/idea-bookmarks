@@ -146,6 +146,8 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 
 Git 分支继续沿用官方 `BranchContextTracker → WorkingContextManager` 的保存与恢复链路及原有开关；本插件升级书签适配器以保留树形层级、稳定 ID 和多组引用。未保存过上下文的新分支保留原版行为，不自动清空当前书签。
 
+AI 行书签的 `line` 从 0 开始；`lineText` 可省略，提供时必须保留源码行的缩进、Tab 和尾空白，不能使用 `strip/lstrip/rstrip`。离线 `validate` 与 `apply` 会校验本地文件、行号和精确锚点，错误在备份及写回前拒绝。
+
 [存储结构说明](docs/STORAGE.md) 列出了格式、位置、迁移、设置和降级边界。[AI 整理指南](docs/AI_BOOKMARKS.md) 提供当前项目及指定 Git 分支历史的导出、编辑、校验、写回和验收步骤。工具要求目标项目关闭，校验源文件版本并自动备份，避免覆盖其他分支的上下文。
 
 ## 9. 导入、导出与分享
@@ -167,7 +169,7 @@ Git 分支继续沿用官方 `BranchContextTracker → WorkingContextManager` �
 ./gradlew verifyOriginalSources smokeTest
 ```
 
-自动检查共 173 项，覆盖插件实际加载、原生 Markdown 文档及编辑器提供器、编辑回写、多层分组、循环拦截、嵌套导航、XML 恢复和旧数据迁移，以及多组引用、共享描述、删除范围和代码行位置变化。新版增加格式 2、原版分支保存/恢复、严格校验、未知 provider 保留和 AI 写入格式与 IDE 读取的联通检查。导入导出新增真实导航、可移植 JSON 与离线工具互通、合并冲突、备份失败拦截、旧编辑缓冲区隔离和预览过期保护检查。历史 GUI 检查见 `docs/VALIDATION.md`，当前验证见 `docs/evidence/runtime-validation.json`。
+自动检查共 204 项，覆盖插件实际加载、原生 Markdown 文档及编辑器提供器、编辑回写、多层分组、循环拦截、嵌套导航、XML 恢复和旧数据迁移，以及多组引用、共享描述、删除范围和代码行位置变化。新版增加格式 2、原版分支保存/恢复、严格校验、未知 provider 保留和 AI 写入格式与 IDE 读取的联通检查。导入导出新增真实导航、可移植 JSON 与离线工具互通、合并冲突、备份失败拦截、旧编辑缓冲区隔离和预览过期保护检查。精确锚点新增缩进、Tab、尾空白、中文、严格失效节点及原版保护检查，另在已发布 `.6` 上通过 31 项兼容检查并完成真实界面跳转，记录见 `docs/evidence/exact-anchor-validation.json`。历史 GUI 检查见 `docs/VALIDATION.md`，当前验证见 `docs/evidence/runtime-validation.json`。
 
 生成可分享的完整工程源码包。
 
