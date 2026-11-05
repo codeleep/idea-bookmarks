@@ -193,6 +193,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         check(manager.getParentGroup(manager.getGroupById("ai-child")) == manager.getGroupById("ai-root") && manager.getDefaultGroup() == manager.getGroupById("ai-child"), "AI import restores hierarchy and nested default group");
         check("# AI 原文\n\n**共享** <tag> & 中文\n".equals(manager.getGroupById("ai-child").getDescription(bookmark)), "AI import preserves exact Markdown and special characters");
       });
+      edt(BookmarkSmokeStarter::bookmarkSearch);
       edt(BookmarkSmokeStarter::exchangePlans);
       edt(() -> {
         try {
@@ -248,6 +249,44 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     boolean rejected = false;
     try { action.run(); } catch (IllegalArgumentException | IllegalStateException expected) { rejected = true; }
     check(rejected, label);
+  }
+
+  private static void bookmarkSearch() {
+    var state = BookmarkExchange.copy(manager.captureForExchange());
+    var record = state.getBookmarks().getFirst();
+    record.setDescription("# 摘要\n\n中文正文：保留完整 Markdown\n\n" + "padding ".repeat(100) + "FAR_NEEDLE at the end\n\n```java\nreadCheckpoint();\n```\n[参考](https://example.invalid)");
+    record.getAttributes().put("lineText", "    \t读取锚点();  ");
+    var original = BookmarkExchange.toJson(state, null);
+    var index = BookmarkSearchIndex.fromState(state, project.getBasePath());
+    check(index.search("FAR_NEEDLE").size() == 1, "full-text search finds content beyond the tree summary and long-line limit");
+    check(index.search("readCheckpoint").size() == 1, "full-text search includes Markdown fenced code bodies");
+    check(index.search("中文正文").size() == 1, "full-text search matches Chinese description text");
+    check(index.search("读取锚点").size() == 1, "full-text search includes the original code anchor");
+    check(index.search("SAMPLE.TXT").size() == 1, "full-text search matches file paths without case sensitivity");
+    check(index.search("根组").size() == 1 && index.search("子组").size() == 1, "full-text search indexes all ancestor and membership group paths");
+    check(index.search("中文正文 sample.txt 子组").size() == 1, "multiple search terms can match across description file and group fields");
+    check(index.search("  far_needle\tSAMPLE.txt  ").size() == 1, "search terms ignore case and separate whitespace");
+    check(index.search("FAR_NEEDLE absent-marker").isEmpty(), "all search terms are required");
+    check(index.search(".*").isEmpty() && index.search("[").size() == 1, "search input is literal text rather than a regular expression");
+    check(index.search("").size() == 1 && index.getEntries().getFirst().getGroups().size() == 2, "a shared bookmark appears once while retaining both group paths");
+    var result = index.search("FAR_NEEDLE").getFirst();
+    check(result.snippet("FAR_NEEDLE").contains("FAR_NEEDLE"), "search snippet includes a match near the end of a long line");
+    check(result.getLocation().equals("sample.txt:2"), "search results show project-relative location and one-based line number");
+    check("ai-child".equals(result.preferredGroup("子组").getId()), "group matches choose the corresponding membership for tree navigation");
+    check(index.search("Branch A").isEmpty(), "search uses only the current bookmark context");
+    check(original.equals(BookmarkExchange.toJson(state, null)), "search indexing and filtering preserve original Markdown anchors IDs and memberships");
+    record.setDescription("İ".repeat(200) + " FAR_NEEDLE");
+    check(BookmarkSearchIndex.fromState(state, project.getBasePath()).search("far_needle").getFirst().snippet("far_needle").contains("FAR_NEEDLE"), "Unicode case expansion preserves valid snippet offsets");
+    var unknown = new BookmarkState(); unknown.setId("search-unknown"); unknown.setProvider("example.unavailable.Provider");
+    unknown.setDescription("unavailable-provider-note"); unknown.getAttributes().put("symbol", "opaqueSymbol");
+    state.getBookmarks().add(unknown); state.getGroups().getFirst().getBookmarkIds().add("search-unknown");
+    check(BookmarkSearchIndex.fromState(state, project.getBasePath()).search("unavailable-provider-note").size() == 1, "search retains canonical records from unavailable providers");
+    var actions = com.intellij.openapi.actionSystem.ActionManager.getInstance();
+    var action = actions.getAction("Bookmarks.Search");
+    check(action != null && action.getTemplatePresentation().getIcon() != null, "installed plugin registers the full-text search icon action");
+    var toolbar = (com.intellij.openapi.actionSystem.ActionGroup)actions.getAction("Bookmarks.ToolWindow.TitleActions");
+    var children = java.util.Arrays.asList(toolbar.getChildren(null));
+    check(children.indexOf(action) == children.indexOf(actions.getAction("BookmarksView.Create")) + 1, "full-text search action follows Create Bookmark List in the toolbar");
   }
 
   private static void exchangePlans() {
