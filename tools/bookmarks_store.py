@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Export, validate and apply normalized Bookmarks data, including original branch archives."""
 import argparse
+import codecs
 from copy import deepcopy
 import hashlib
 from io import BytesIO
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import uuid
@@ -14,6 +16,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 VERSION = 2
+LINE_PROVIDER = "com.intellij.ide.bookmark.providers.LineBookmarkProvider"
 TYPES = {"DEFAULT", *(f"LETTER_{c}" for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"), *(f"DIGIT_{n}" for n in range(10))}
 
 
@@ -56,11 +59,10 @@ def validate(model):
         require(location not in locations, "Duplicate bookmark location; reference the existing ID")
         locations.add(location)
         if "line" in attributes:
-            try:
-                line = int(attributes["line"])
-            except ValueError:
-                raise ValueError("line must be an integer string") from None
-            require(-1 <= line <= 2147483647, "line must be zero-based, or -1 for a file")
+            context = f"Bookmark {ident!r}; file={attributes.get('url', '<missing url>')}; line={attributes['line']!r}"
+            require(re.fullmatch(r"[+-]?[0-9]+", attributes["line"]) is not None, context+": line must be an integer string")
+            line = int(attributes["line"])
+            require(-1 <= line <= 2147483647, context+": line must be zero-based, or -1 for a file")
         kind = record["type"]
         require(isinstance(kind, str) and kind in TYPES, "Unknown bookmark mnemonic")
         require(kind == "DEFAULT" or kind not in mnemonics, "Duplicate mnemonic")
@@ -91,6 +93,101 @@ def validate(model):
             visited.add(parent)
             parent = by_id[parent]["parentId"]
     return model
+
+
+def source_lines(raw):
+    """Match IDEA Document lines: remove BOM/separators, never trim source whitespace."""
+    encoding = "utf-8"
+    for marker, candidate in ((codecs.BOM_UTF32_LE, "utf-32"), (codecs.BOM_UTF32_BE, "utf-32"),
+                              (codecs.BOM_UTF16_LE, "utf-16"), (codecs.BOM_UTF16_BE, "utf-16"),
+                              (codecs.BOM_UTF8, "utf-8-sig")):
+        if raw.startswith(marker):
+            encoding = candidate
+            break
+    # splitlines() also splits Unicode separators and form feed, unlike IDEA.
+    return raw.decode(encoding).replace("\r\n", "\n").replace("\r", "\n").split("\n")
+
+
+def local_bookmark_path(url, project):
+    expanded = url.replace("$PROJECT_DIR$", project.resolve().as_posix())
+    require(not re.search(r"\$[^$]+\$", expanded), "Unresolved path macro; use a concrete local file URL")
+    path = Path(expanded[len("file://"):])
+    require(path.is_absolute(), "Expected an absolute IDEA file:// URL")
+    # IDEA VFS URLs contain literal path characters, not percent-encoded URI paths.
+    return path.resolve()
+
+
+def validate_locations(model, project, source_ref=None):
+    """Validate local line anchors without modifying the model or source files.
+
+    Archive callers may read the target Git revision without checking it out.
+    File bookmarks, non-local URLs and other providers retain their own semantics.
+    """
+    validate(model)
+    project = Path(project).resolve()
+    require(project.is_dir(), f"Project directory does not exist: {project}")
+    git_root, revision = None, None
+    if source_ref is not None:
+        def git(*args):
+            result = subprocess.run(["git", "-C", str(project), *args], capture_output=True, text=True)
+            require(result.returncode == 0, f"Cannot read bookmark source revision {source_ref!r}; use its matching worktree or restore that Git ref")
+            return result.stdout.strip()
+        git_root = Path(git("rev-parse", "--show-toplevel")).resolve()
+        revision = git("rev-parse", "--verify", f"{source_ref}^{{commit}}")
+
+    report = {"checkedLineBookmarks": 0, "checkedTextAnchors": 0, "lineBookmarksWithoutText": 0, "skippedFileBookmarks": 0,
+              "skippedOtherProviders": 0, "skippedNonLocalBookmarks": 0,
+              "source": f"git:{revision}" if revision else "working-tree"}
+    cache, errors = {}, []
+    for record in model["bookmarks"]:
+        attributes = record["attributes"]
+        if record["provider"] != LINE_PROVIDER:
+            report["skippedOtherProviders"] += 1
+            continue
+        line = int(attributes.get("line", "-1"))
+        if line < 0:
+            report["skippedFileBookmarks"] += 1
+            continue
+        url = attributes.get("url", "<missing url>")
+        file = url
+        try:
+            require(bool(re.match(r"^[A-Za-z][A-Za-z0-9+.-]*://", url)), "Missing or invalid bookmark URL")
+            if not url.startswith("file://"):
+                report["skippedNonLocalBookmarks"] += 1
+                continue
+            file = local_bookmark_path(url, project)
+            if file not in cache:
+                if git_root is not None and file.is_relative_to(git_root):
+                    relative = file.relative_to(git_root).as_posix()
+                    result = subprocess.run(["git", "-C", str(git_root), "show", f"{revision}:{relative}"], capture_output=True)
+                    require(result.returncode == 0, f"Source file does not exist at Git revision {revision}")
+                    raw = result.stdout
+                else:
+                    require(file.is_file(), "Source file does not exist or is not a regular file")
+                    raw = file.read_bytes()
+                cache[file] = source_lines(raw)
+            lines = cache[file]
+            require(line < len(lines), f"Line is outside the source document ({len(lines)} lines)")
+            if "lineText" in attributes:
+                require(attributes["lineText"] == lines[line],
+                        f"lineText mismatch: provided={attributes['lineText']!r}; source={lines[line]!r}; preserve leading/trailing whitespace and omit the line separator")
+                report["checkedTextAnchors"] += 1
+            else:
+                report["lineBookmarksWithoutText"] += 1
+            report["checkedLineBookmarks"] += 1
+        except (ValueError, OSError, UnicodeError) as error:
+            errors.append(f"Bookmark {record['id']!r}; file={file}; line={line} (IDEA {line + 1}): {error}")
+    require(not errors, f"Bookmark location validation failed ({len(errors)}):\n" + "\n".join(errors))
+    return report
+
+
+def location_source_ref(project, archive, branch):
+    # Original archive names are Git branch names; validate against that branch's
+    # committed source without switching or altering the current working tree.
+    if not archive:
+        return None
+    result = subprocess.run(["git", "-C", str(project), "rev-parse", "--show-toplevel"], capture_output=True)
+    return branch if result.returncode == 0 else None
 
 
 def option(node, name, default=None):
@@ -209,6 +306,8 @@ def apply_model(project, model, archive=None, branch=None):
         if not archive:
             actual = git_state(project)
             require(all(meta.get(k) == actual[k] for k in ("branch", "commit")), "Git branch/commit changed after export")
+        validate_locations(model, project, location_source_ref(project, archive, branch))
+        if not archive:
             old = root.find("./component[@name='BookmarksManager']")
             saved = write_state(model, "component")
             saved.set("name", "BookmarksManager")
@@ -270,6 +369,7 @@ def main():
             child.add_argument("--project-closed", action="store_true", required=True, help="Confirm the target project / IDE is closed before changing stored state")
     child = commands.add_parser("validate")
     child.add_argument("--input", type=Path, required=True)
+    child.add_argument("--project", type=Path, help="Target project/worktree; inferred from _source.project when available")
     child = commands.add_parser("branches")
     child.add_argument("--archive", type=Path, required=True)
     args = parser.parse_args()
@@ -280,7 +380,11 @@ def main():
             print(f"EXPORTED: {args.out}; {len(model['bookmarks'])} bookmarks; {len(model['groups'])} groups")
         elif args.command == "validate":
             model = validate(read_json(args.input))
-            print(f"VALID: {len(model['bookmarks'])} bookmarks; {len(model['groups'])} groups")
+            project = args.project or (Path(model["_source"]["project"]) if model.get("_source", {}).get("project") else None)
+            require(project is not None, "--project is required for location validation when _source.project is absent")
+            meta = model.get("_source", {})
+            report = validate_locations(model, project, location_source_ref(project, meta.get("kind") == "branch", meta.get("branch")))
+            print(f"VALID: {len(model['bookmarks'])} bookmarks; {len(model['groups'])} groups; locations={json.dumps(report, ensure_ascii=False)}")
         elif args.command == "apply":
             print(json.dumps(apply_model(args.project, read_json(args.input), args.archive, args.branch), ensure_ascii=False, indent=2))
         else:
