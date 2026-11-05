@@ -42,8 +42,9 @@ class ReleaseTests(unittest.TestCase):
         self.notes.write_text("release notes")
         self.uploaded = {"assets": [{"name": p.name, "size": p.stat().st_size, "digest": f"sha256:{sha256(p)}"} for p in self.assets]}
         self.published = {**self.uploaded, "draft": False, "html_url": "https://github.com/owner/repo/releases/tag/v" + VERSION}
+        self.tag_api = [{"object": {}}, {"sha": COMMIT}, {"status": "identical"}]
 
-    def call_publish(self, ref="refs/heads/main"):
+    def call_publish(self, ref=f"refs/tags/v{VERSION}"):
         return publish("owner/repo", COMMIT, ref, self.assets, self.notes, VERSION)
 
     def test_verified_assets_are_selected(self):
@@ -65,19 +66,19 @@ class ReleaseTests(unittest.TestCase):
 
     def test_mismatched_tag_does_not_write(self):
         with patch("publish_release.gh") as command, patch("publish_release.api") as api:
-            with self.assertRaisesRegex(ValueError, "Tag must match"):
+            with self.assertRaisesRegex(ValueError, "matching version tag"):
                 self.call_publish("refs/tags/v0.0.0")
             command.assert_not_called()
             api.assert_not_called()
 
     def test_published_version_is_never_overwritten(self):
-        with patch("publish_release.find_release", return_value=self.published), patch("publish_release.gh") as command:
+        with patch("publish_release.find_release", return_value=self.published), patch("publish_release.api", side_effect=self.tag_api), patch("publish_release.gh") as command:
             self.assertEqual(self.published, self.call_publish())
             command.assert_not_called()
 
     def test_incomplete_published_release_is_not_overwritten(self):
         incomplete = {**self.published, "assets": []}
-        with patch("publish_release.find_release", return_value=incomplete), patch("publish_release.gh") as command:
+        with patch("publish_release.find_release", return_value=incomplete), patch("publish_release.api", side_effect=self.tag_api), patch("publish_release.gh") as command:
             with self.assertRaisesRegex(ValueError, "incomplete"):
                 self.call_publish()
             command.assert_not_called()
@@ -88,13 +89,37 @@ class ReleaseTests(unittest.TestCase):
                 self.call_publish()
             command.assert_not_called()
 
-    def test_existing_untagged_draft_can_follow_verified_commit(self):
+    def test_existing_untagged_draft_cannot_create_a_tag(self):
         draft = {"id": 123, "draft": True, "target_commitish": "b" * 40}
-        with patch("publish_release.find_release", return_value=draft), patch("publish_release.api", side_effect=[None, self.uploaded, self.published]) as api, patch("publish_release.gh") as command:
+        with patch("publish_release.find_release", return_value=draft) as find, patch("publish_release.api", return_value=None), patch("publish_release.gh") as command:
+            with self.assertRaisesRegex(ValueError, "must already exist"):
+                self.call_publish()
+            command.assert_not_called()
+            find.assert_not_called()
+
+    def test_existing_tagged_draft_can_resume_without_retargeting(self):
+        draft = {"id": 123, "draft": True, "target_commitish": COMMIT}
+        with patch("publish_release.find_release", return_value=draft), patch("publish_release.api", side_effect=[*self.tag_api, self.uploaded, self.published]) as api, patch("publish_release.gh") as command:
             self.assertEqual(self.published, self.call_publish())
             self.assertEqual(["edit", "upload", "edit"], [call.args[1] for call in command.call_args_list])
-            self.assertIn("--target", command.call_args_list[0].args)
-            self.assertEqual("repos/owner/repo/releases/123", api.call_args_list[1].args[0])
+            self.assertNotIn("--target", command.call_args_list[0].args)
+            self.assertEqual("repos/owner/repo/releases/123", api.call_args_list[3].args[0])
+
+    def test_branches_and_missing_refs_cannot_publish_or_call_github(self):
+        for ref in ("refs/heads/main", "refs/heads/feature/example", "refs/pull/1/merge", ""):
+            with self.subTest(ref=ref), patch("publish_release.api") as api, patch("publish_release.gh") as command:
+                with self.assertRaisesRegex(ValueError, "matching version tag"):
+                    self.call_publish(ref)
+                api.assert_not_called()
+                command.assert_not_called()
+
+    def test_unmerged_tag_cannot_publish(self):
+        for status in ("behind", "diverged"):
+            with self.subTest(status=status), patch("publish_release.api", side_effect=[*self.tag_api[:2], {"status": status}]), patch("publish_release.find_release") as find, patch("publish_release.gh") as command:
+                with self.assertRaisesRegex(ValueError, "merged into main"):
+                    self.call_publish()
+                find.assert_not_called()
+                command.assert_not_called()
 
     def test_draft_is_found_when_by_tag_endpoint_returns_not_found(self):
         draft = {"id": 123, "draft": True, "tag_name": f"v{VERSION}"}
@@ -105,22 +130,22 @@ class ReleaseTests(unittest.TestCase):
     def test_upload_digest_failure_leaves_release_unpublished(self):
         self.uploaded["assets"][0]["digest"] = "sha256:incorrect"
         draft = {"id": 123, "draft": True}
-        with patch("publish_release.find_release", return_value=None), patch("publish_release.api", side_effect=[None, draft, self.uploaded]), patch("publish_release.gh") as command:
+        with patch("publish_release.find_release", return_value=None), patch("publish_release.api", side_effect=[*self.tag_api, draft, self.uploaded]), patch("publish_release.gh") as command:
             with self.assertRaisesRegex(ValueError, "digest mismatch"):
                 self.call_publish()
             self.assertEqual(["upload"], [call.args[1] for call in command.call_args_list])
 
     def test_new_release_is_published_only_after_asset_verification(self):
         draft = {"id": 123, "draft": True}
-        with patch("publish_release.find_release", return_value=None) as find, patch("publish_release.api", side_effect=[None, draft, self.uploaded, self.published]) as api, patch("publish_release.gh") as command:
+        with patch("publish_release.find_release", return_value=None) as find, patch("publish_release.api", side_effect=[*self.tag_api, draft, self.uploaded, self.published]) as api, patch("publish_release.gh") as command:
             self.assertEqual(self.published, self.call_publish())
             self.assertEqual(["upload", "edit"], [call.args[1] for call in command.call_args_list])
             find.assert_called_once()  # No eventually consistent lookup after creation.
             self.assertEqual({"tag_name": f"v{VERSION}", "target_commitish": COMMIT,
                               "draft": True, "name": f"Bookmarks {VERSION}",
-                              "body": self.notes.read_text()}, api.call_args_list[1].kwargs["payload"])
+                              "body": self.notes.read_text()}, api.call_args_list[3].kwargs["payload"])
             self.assertIn("--draft=false", command.call_args_list[-1].args)
-            self.assertEqual("repos/owner/repo/releases/123", api.call_args_list[2].args[0])
+            self.assertEqual("repos/owner/repo/releases/123", api.call_args_list[4].args[0])
 
     def test_create_payload_is_sent_as_json_stdin(self):
         from publish_release import api

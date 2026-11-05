@@ -89,20 +89,22 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 
 修改代码后重新构建并重启开发实例。发布自己的下一次本地更新前，在 `plugin/plugin.xml` 中递增 `<version>`。当前兼容范围锁定 `262.11879.100`，更换目标 SDK 时需要重新编译和运行验证。
 
-## 5. GitHub Release 与一键构建
+## 5. GitHub Release 与一键验证
 
 已发布版本可直接在 [Releases](https://github.com/codeleep/idea-bookmarks/releases) 中下载；[最新版本](https://github.com/codeleep/idea-bookmarks/releases/latest) 的 Assets 里选择 `bookmarks-desktop-版本号.zip`。
 
-1. 打开仓库的 **Actions → Build IDEA Bookmarks Plugin → Run workflow**。
-2. 选择默认分支，保持 `publish_release` 勾选，点击 **Run workflow**。
-3. 构建验证通过后自动创建对应版本的 Release，在 Summary 的版本下载链接或 Releases 中下载安装包。
-4. 在 IDEA 中执行 **Install Plugin from Disk**，直接选择这个 ZIP，然后重启。
+**只有推送匹配版本的 tag 才会打包分发并发布 Release。** 分支推送、PR 和合入 `main` 只做编译及 IDE 运行验证，不上传正式安装包，也不创建 Release 或自动创建 tag。
 
-PR 合入 `main` 后会自动构建并发布新版本；版本标签为 `v` 加 `plugin/plugin.xml` 中的版本号。已经发布的同版本不会被覆盖，更新功能后需要递增版本号。Release 附件保留在对应版本页面。
+1. 在 `feature/<名称>` 或 `fixbug/<名称>` 分支开发，通过 PR 合入 `main`。
+2. 需要发版时，确认 `plugin/plugin.xml` 的版本号，在对应的 `main` 已合入提交上创建并推送 `v<版本号>` tag，例如 `v262.11879.100.7`。
+3. tag 工作流校验版本、提交及 `main` 归属，构建验证成功后上传安装包、完整源码及报告，创建对应 Release。
+4. 在 IDEA 中执行 **Install Plugin from Disk**，直接选择 Release 中的 ZIP，然后重启。
 
-插件 ZIP 采用原文件上传，下载后无需解压。`idea-bookmarks-版本号-sources.zip` 是源码包；`bookmarks-build-reports` 包含校验值和本轮运行报告。下载 Actions 产物需要登录 GitHub，默认保留 30 天。
+手动验证：打开 **Actions → Build IDEA Bookmarks Plugin → Run workflow**，选择 `main` 或开发分支即可。分支上的手动运行只验证；选择已存在的匹配版本 tag 可重试该版本流程。
 
-工作流会自动下载并校验固定版本的官方 Linux x64 SDK，使用它自带的编译器，完成原始源码校验、三个插件模块编译、IDE 进程内检查和源码归档。推送到 `main`、`feature/**`、`fixbug/**` 分支或 `v*` 标签，以及面向 `main` 的 Pull Request 会触发构建。详细配置和复现命令见 [CI 使用说明](docs/CI.md)。
+已经发布的同版本不会被覆盖；标签也不会移动。插件 ZIP 采用原文件上传，下载后无需解压。`idea-bookmarks-版本号-sources.zip` 是完整源码包，`bookmarks-build-reports` 包含校验和与运行报告。正式安装包和源码 Actions 产物只在 tag 构建中上传，默认保留 30 天，Release 附件保留在对应版本页面。
+
+工作流使用固定 SHA-256 的官方 Linux x64 SDK，仅编译插件。普通 CI 会临时生成插件 ZIP 用于实际安装和运行检查，正式源码分发包与校验清单只在 tag 构建中生成。详细配置见 [CI 使用说明](docs/CI.md)。
 
 默认分支为 `main`，禁止直接推送，管理员也必须通过 PR。新功能使用 `feature/<名称>`，缺陷修复使用 `fixbug/<名称>`；PR 通过分支命名与安装包构建检查后合入。协作约定见 [AGENTS.md](AGENTS.md)。
 

@@ -12,6 +12,7 @@ import zipfile
 
 from build import PLUGIN_VERSION, ROOT
 from ci_build import sha256
+from release_policy import require_version_tag
 
 
 def gh(*args):
@@ -82,9 +83,14 @@ def validate_assets(directory, version):
 
 
 def publish(repo, target, ref, assets, notes, version):
-    tag = f"v{version}"
-    if ref.startswith("refs/tags/") and ref != f"refs/tags/{tag}":
-        raise ValueError(f"Tag must match plugin.xml version: {tag}")
+    tag = require_version_tag(ref, version)
+    tagged = api(f"repos/{repo}/git/ref/tags/{tag}", optional=True)
+    if not tagged:
+        raise ValueError(f"Version tag {tag} must already exist; create and push it before publishing")
+    if api(f"repos/{repo}/commits/{tag}")["sha"] != target:
+        raise ValueError(f"Existing tag {tag} points to another commit; tags will not be moved")
+    if api(f"repos/{repo}/compare/{target}...main")["status"] not in {"ahead", "identical"}:
+        raise ValueError("Version tag must point to a commit already merged into main")
     release = find_release(repo, tag)
     required = {path.name for path in assets}
     if release and not release["draft"]:
@@ -92,9 +98,6 @@ def publish(repo, target, ref, assets, notes, version):
             raise ValueError(f"Existing published release {tag} is incomplete; it will not be overwritten")
         print(f"RELEASE_EXISTS: {release['html_url']}; increment plugin.xml version to release new code")
         return release
-    tagged = api(f"repos/{repo}/git/ref/tags/{tag}", optional=True)
-    if tagged and api(f"repos/{repo}/commits/{tag}")["sha"] != target:
-        raise ValueError(f"Existing tag {tag} points to another commit; tags will not be moved")
     if not release:
         # Use the creation response: draft tag/list queries can lag behind writes.
         release = api(f"repos/{repo}/releases", payload={
@@ -104,10 +107,8 @@ def publish(repo, target, ref, assets, notes, version):
         if not release or not release.get("id") or not release.get("draft"):
             raise ValueError("GitHub did not return a newly created draft release")
     else:
-        # An unpublished draft without a Git tag may safely follow a newer verified commit.
-        extra = ("--target", target) if not tagged else ()
         gh("release", "edit", tag, "--repo", repo, "--notes-file", str(notes),
-           "--title", f"Bookmarks {version}", *extra)
+           "--title", f"Bookmarks {version}")
     endpoint = f"repos/{repo}/releases/{release['id']}"
     # Only unpublished drafts can be resumed or replaced on a retry.
     gh("release", "upload", tag, *map(str, assets), "--repo", repo, "--clobber")
@@ -130,9 +131,11 @@ def main():
     parser.add_argument("--ref", default=os.environ.get("GITHUB_REF", ""))
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
+    try:
+        require_version_tag(args.ref, PLUGIN_VERSION)
+    except ValueError as error:
+        parser.error(str(error))
     assets, runtime = validate_assets(args.artifacts_dir, PLUGIN_VERSION)
-    if args.ref.startswith("refs/tags/") and args.ref != f"refs/tags/v{PLUGIN_VERSION}":
-        parser.error(f"Tag must be v{PLUGIN_VERSION}")
     if args.dry_run:
         print(f"RELEASE_DRY_RUN_PASS: v{PLUGIN_VERSION}; {len(assets)} assets; {len(runtime['checks'])} runtime checks")
         return
@@ -148,6 +151,7 @@ def main():
         f"下载 **{assets[0].name}**，无需解压，在 IDEA 的 **Settings → Plugins → 齿轮 → Install Plugin from Disk** 中选择该文件并重启。请保持内置 Markdown 插件启用。\n\n"
         f"- 支持多层树形分组、同一书签多组引用、共享 Markdown 描述、删除范围，以及格式 2 独立书签表与 ID 引用。\n"
         f"- 复用官方 Git 分支上下文，完整恢复分组树与共享描述；源码内含 AI 整理指南和导出、校验、写回工具。\n"
+        f"- 支持 JSON 完整导入导出、Markdown 分享、合并与替换、原生差异预览及导入前自动备份。\n"
         f"- `{assets[1].name}` 是完整二开源码。\n"
         f"- `SHA256SUMS` 用于核对安装包与源码包；JSON 附件是本次构建与运行检查报告。\n"
         f"- IDE 进程内检查：**{len(runtime['checks'])} 项通过**。\n"
