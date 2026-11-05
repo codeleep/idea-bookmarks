@@ -196,6 +196,7 @@
         <reference ref="ManageBookmarkGroups"/>
         <action id="BookmarksView.Create" icon="AllIcons.Actions.AddList" use-shortcut-of="NewElement"
                 class="com.intellij.ide.bookmark.actions.GroupCreateAction"/>
+        <action id="Bookmarks.Search" icon="AllIcons.Actions.Search" class="com.intellij.ide.bookmark.actions.SearchBookmarksAction"/>
         <reference ref="BookmarksView.Rename"/>
         <reference ref="BookmarksView.CreateSubgroup"/>
         <separator/>

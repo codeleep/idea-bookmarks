@@ -1,0 +1,33 @@
+{
+  "pluginVersion": "262.11879.100.7",
+  "sdkVersion": "2026.2.4",
+  "sdkBuild": "262.11879.100",
+  "date": "2026-11-05",
+  "archiveSha256": "30f53fcbda5fcfaabe3ae2bf6cbd88b5141796a1d49975523ea80b23703ec0b7",
+  "installation": "isolated user plugin directory; official IDE untouched",
+  "fixture": {
+    "canonicalBookmarks": 5,
+    "groups": 2,
+    "references": 10,
+    "source": "UTF-8 BOM / CRLF AnchorFixture.java"
+  },
+  "checks": {
+    "toolbarSearchIconImmediatelyAfterCreateList": true,
+    "emptyQueryListsFiveCanonicalBookmarks": true,
+    "fullDescriptionBodyFoundBeyondTreeSummary": "SEARCH_BODY_ONLY -> AnchorFixture.java:3",
+    "fencedCodeBodyFound": "readCheckpoint -> AnchorFixture.java:3",
+    "longLineTailFoundAndVisibleInSnippet": "TAIL_SEARCH_END -> AnchorFixture.java:3",
+    "chineseDescriptionFound": "完整正文 -> AnchorFixture.java:3",
+    "caseInsensitiveAndTermsAcrossFields": "共享引用 search_body_only -> 1 result",
+    "pathAndCodeAnchorMatch": "AnchorFixture tabs -> 1 result",
+    "sharedBookmarkHasOneResultAndBothGroupPaths": true,
+    "noMatchShowsEmptyStateAndDisablesLocate": true,
+    "enterSelectsMatchingChildMembershipAndNavigates": "共享引用 / AnchorFixture.java:3:1",
+    "doubleClickSelectsBookmarkAndNavigates": "AnchorFixture.java:3:1",
+    "allFourInstalledJarsMatchZip": true,
+    "bookmarkModelUnchangedAfterExit": true,
+    "newErrorOrSevereLogLines": 0,
+    "isolatedTestInstanceExitedNormally": true
+  },
+  "boundaries": "GUI tested the current isolated project context. Other context exclusion, unavailable providers, literal matching, and Unicode case-expansion offsets are covered by native IDE runtime checks. No user project or installed user plugin was modified. No tag or Release was created."
+}
