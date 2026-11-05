@@ -321,6 +321,17 @@ class StoreTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "lineText mismatch"):
             validate_locations(model, self.project, "archive-branch")
 
+    def test_unborn_git_archive_cannot_fall_back_to_another_source(self):
+        subprocess.run(["git", "init", "--quiet", "--initial-branch=empty", str(self.project)], check=True)
+        archive = self.project/"contexts.zip"
+        root = ET.Element("context"); ET.SubElement(root, "bookmarks").append(write_state(self.model, "ManagerState"))
+        with zipfile.ZipFile(archive, "w") as package:
+            package.writestr("/__branch_context_empty", encode_xml(root))
+        model, _, original = load_source(self.project, archive, "empty")
+        with self.assertRaisesRegex(ValueError, "Cannot read bookmark source revision"):
+            apply_model(self.project, model, archive, "empty")
+        self.assertEqual(original, archive.read_bytes())
+
 
 if __name__ == "__main__":
     unittest.main()

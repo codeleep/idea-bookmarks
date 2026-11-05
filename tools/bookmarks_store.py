@@ -184,7 +184,10 @@ def validate_locations(model, project, source_ref=None):
 def location_source_ref(project, archive, branch):
     # Original archive names are Git branch names; validate against that branch's
     # committed source without switching or altering the current working tree.
-    return branch if archive and git_state(project)["commit"] is not None else None
+    if not archive:
+        return None
+    result = subprocess.run(["git", "-C", str(project), "rev-parse", "--show-toplevel"], capture_output=True)
+    return branch if result.returncode == 0 else None
 
 
 def option(node, name, default=None):
