@@ -86,6 +86,7 @@ class BookmarksView(val project: Project, val isPopup: Boolean)
   private val treeExpander = DefaultTreeExpander(tree)
   private val panel = BorderLayoutPanel()
   private val description = if (isPopup) null else MarkdownDescriptionPanel(project)
+  private val descriptionSplitter = description?.let { OnePixelSplitter(true, .65f) }
   private val updater = FolderNodeUpdater(this)
 
   val selectedNode: AbstractTreeNode<*>?
@@ -217,6 +218,10 @@ class BookmarksView(val project: Project, val isPopup: Boolean)
 
   private fun selectionChanged(autoScroll: Boolean = tree.hasFocus()) {
     description?.showBookmark(selectedNode)
+    descriptionSplitter?.let { splitter ->
+      val component = description?.takeIf { it.isVisible }
+      if (splitter.secondComponent !== component) splitter.secondComponent = component
+    }
     if (isPopup || !openInPreviewTab.isEnabled) {
       preview.open(selectedNode?.toOpenFileDescriptor())
     }
@@ -240,10 +245,9 @@ class BookmarksView(val project: Project, val isPopup: Boolean)
   }
 
   init {
-    if (description == null) panel.addToCenter(createScrollPane(tree, true))
-    else panel.addToCenter(OnePixelSplitter(true, .65f).apply {
+    if (descriptionSplitter == null) panel.addToCenter(createScrollPane(tree, true))
+    else panel.addToCenter(descriptionSplitter.apply {
       firstComponent = createScrollPane(tree, true)
-      secondComponent = description
     })
     panel.putClientProperty(OPEN_IN_PREVIEW_TAB, true)
 

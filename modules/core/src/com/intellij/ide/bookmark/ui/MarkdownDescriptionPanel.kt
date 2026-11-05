@@ -18,10 +18,11 @@ internal class MarkdownDescriptionPanel(private val project: Project) : JPanel(B
   private var node: BookmarkNode<*>? = null
 
   fun showBookmark(selected: AbstractTreeNode<*>?) {
-    node = selected as? BookmarkNode<*>
+    node = (selected as? BookmarkNode<*>)?.takeIf { it.bookmarkGroup?.canRemove(it.value) == true }
     val group = node?.bookmarkGroup
+    isVisible = node != null
     edit.isEnabled = group != null
-    val text = node?.let { group?.getDescription(it.value) } ?: message("description.empty")
+    val text = node?.let { group?.getDescription(it.value) }.orEmpty()
     preview.text = MarkdownDescriptions.toHtml(text)
     preview.caretPosition = 0
   }
