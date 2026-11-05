@@ -2,11 +2,6 @@ name: Build IDEA Bookmarks Plugin
 
 on:
   workflow_dispatch:
-    inputs:
-      publish_release:
-        description: Publish a versioned Release after verification (default branch only)
-        type: boolean
-        default: true
   push:
     branches: [main, 'feature/**', 'fixbug/**']
     tags: ['v*']
@@ -48,6 +43,17 @@ jobs:
           print(f'Branch policy passed: {branch}')
           PY
 
+      - name: Check out version tag for release validation
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Require matching version tag on main
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: python3 tools/release_policy.py
+
   build:
     name: Build and verify installable ZIP
     needs: branch-policy
@@ -72,12 +78,18 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core libfreetype6 libxi6 libxrender1 libxtst6
 
-      - name: Build, run IDE smoke checks and package source
+      - name: Build and verify; package distributions only for version tags
         id: build
-        run: python3 tools/ci_build.py
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            python3 tools/ci_build.py
+          else
+            python3 tools/ci_build.py --verification-only
+          fi
 
       # Upload the plugin ZIP itself, rather than wrapping it in a second ZIP.
       - name: Upload installable plugin ZIP
+        if: startsWith(github.ref, 'refs/tags/v')
         id: plugin
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -87,6 +99,7 @@ jobs:
           retention-days: 30
 
       - name: Upload complete source ZIP
+        if: startsWith(github.ref, 'refs/tags/v')
         id: sources
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -108,6 +121,7 @@ jobs:
           retention-days: 30
 
       - name: Show download and installation instructions
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           PLUGIN_URL: ${{ steps.plugin.outputs.artifact-url }}
           SOURCE_URL: ${{ steps.sources.outputs.artifact-url }}
@@ -127,6 +141,11 @@ jobs:
               stream.write(text)
           PY
 
+      - name: Show verification-only result
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          echo '构建与 IDE 运行检查通过。分支和 PR 不上传安装包、不生成源码分发包、不创建 Release；发布需要推送与 plugin.xml 版本一致的 tag。' >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload diagnostics if build fails
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -143,9 +162,8 @@ jobs:
     name: Publish versioned GitHub Release
     needs: build
     if: >-
-      github.event_name != 'pull_request' &&
-      (github.event_name != 'workflow_dispatch' || inputs.publish_release) &&
-      (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || startsWith(github.ref, 'refs/tags/v'))
+      startsWith(github.ref, 'refs/tags/v') &&
+      github.ref == format('refs/tags/v{0}', needs.build.outputs.version)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
