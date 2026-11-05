@@ -192,6 +192,42 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         check(manager.getParentGroup(manager.getGroupById("ai-child")) == manager.getGroupById("ai-root") && manager.getDefaultGroup() == manager.getGroupById("ai-child"), "AI import restores hierarchy and nested default group");
         check("# AI 原文\n\n**共享** <tag> & 中文\n".equals(manager.getGroupById("ai-child").getDescription(bookmark)), "AI import preserves exact Markdown and special characters");
       });
+      edt(BookmarkSmokeStarter::exchangePlans);
+      edt(() -> {
+        try {
+          var current = manager.captureForExchange();
+          long revision = manager.getStateModificationCount();
+          var bookmark = manager.getBookmark(BookmarkType.LETTER_Z);
+          var document = FileDocumentManager.getInstance().getDocument(MarkdownDescriptionEditor.getInstance(project)
+              .getDescriptionFile(manager.getGroupById("ai-child"), bookmark));
+          var incoming = BookmarkExchange.copy(current);
+          incoming.getBookmarks().getFirst().setDescription("# 导入的共享描述\n\n**中文** & <tag>\n");
+          var plan = BookmarkExchange.plan(current, incoming, false, true);
+          var blocked = filePath.getParent().resolve(".idea/bookmarks-import-backups");
+          Files.writeString(blocked, "blocked-backup-directory");
+          boolean refused = false;
+          try { manager.applyExchange(current, revision, plan.getState()); } catch (Exception expected) { refused = true; }
+          check(refused && BookmarkExchange.toJson(current, null).equals(BookmarkExchange.toJson(manager.captureForExchange(), null)), "backup failure prevents any live import mutation");
+          Files.delete(blocked);
+          var backup = manager.applyExchange(current, revision, plan.getState());
+          check(Files.isRegularFile(backup) && BookmarkExchange.toJson(current, filePath.getParent()).equals(Files.readString(backup)), "import saves complete portable backup before modifying the live model");
+          WriteCommandAction.runWriteCommandAction(project, () -> document.setText("旧编辑页不能覆盖导入结果"));
+          Files.writeString(root.resolve("portable-export.json"), BookmarkExchange.toJson(plan.getState(), filePath.getParent()));
+          Files.writeString(root.resolve("shared-bookmarks.md"), BookmarkExchange.toMarkdown(plan.getState(), filePath.getParent(), "验证项目"));
+        } catch (Exception error) { throw new RuntimeException(error); }
+      });
+      await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_Z) != null, "interactive import restores through the official live manager");
+      edt(() -> {
+        var bookmark = manager.getBookmark(BookmarkType.LETTER_Z);
+        check(manager.getGroups(bookmark).size() == 2 && manager.getGroups(bookmark).stream().allMatch(g -> "# 导入的共享描述\n\n**中文** & <tag>\n".equals(g.getDescription(bookmark))), "import applies shared description to both groups and detaches stale editors");
+        check("ai-stable-bookmark".equals(manager.getBookmarkId(bookmark)) && manager.getParentGroup(manager.getGroupById("ai-child")) == manager.getGroupById("ai-root"), "live import preserves stable IDs and nested hierarchy");
+        var expected = manager.captureForExchange();
+        var revision = manager.getStateModificationCount();
+        manager.getGroupById("ai-root").setName("预览期间修改");
+        reject(() -> manager.applyExchange(expected, revision, expected), "stale import preview rejected without overwriting newer edits");
+        check("预览期间修改".equals(manager.getGroupById("ai-root").getName()), "rejected stale preview retains current state");
+        manager.getGroupById("ai-root").setName("AI 根组");
+      });
       com.intellij.configurationStore.StoreUtil.saveSettings(project, true);
       Path persisted = root.resolve("project/.idea/bookmarks.xml");
       await(() -> Files.isRegularFile(persisted), "new state saved to project bookmarks.xml");
@@ -204,6 +240,108 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     } catch (Throwable error) {
       error.printStackTrace();
       System.exit(1);
+    }
+  }
+
+  private static void reject(Runnable action, String label) {
+    boolean rejected = false;
+    try { action.run(); } catch (IllegalArgumentException | IllegalStateException expected) { rejected = true; }
+    check(rejected, label);
+  }
+
+  private static void exchangePlans() {
+    var base = Path.of(project.getBasePath());
+    var current = manager.captureForExchange();
+    check(manager.getBookmark(BookmarkType.LETTER_Z).canNavigate(), "imported JSON fixture resolves a real navigable file with Unicode project paths");
+    var text = BookmarkExchange.toJson(current, base);
+    check(text.contains("file://$PROJECT_DIR$/sample.txt") && !text.contains(base.toString()), "portable export replaces project file paths and omits local source metadata");
+    var decoded = BookmarkExchange.fromJson(text, base);
+    try {
+      var fixture = Files.readString(Path.of(System.getProperty("bookmarks.validation.root")).resolve("ai-import.json"));
+      check(BookmarkExchange.toJson(decoded, null).equals(BookmarkExchange.toJson(BookmarkExchange.fromJson(fixture, base), null)), "IDE JSON decoder accepts the actual Python AI exchange document");
+    } catch (Exception error) { throw new RuntimeException(error); }
+    check(BookmarkExchange.toJson(current, null).equals(BookmarkExchange.toJson(decoded, null)), "portable JSON round-trip preserves exact descriptions IDs ordering and references");
+    var relocated = BookmarkExchange.fromJson(text, base.resolve("other-checkout"));
+    check(relocated.getBookmarks().getFirst().getAttributes().get("url").contains("/other-checkout/sample.txt"), "portable import remaps paths to another checkout");
+    var selected = BookmarkExchange.select(current, java.util.Set.of("ai-child"));
+    check(selected.getGroups().size() == 1 && selected.getGroups().getFirst().getParentId() == null
+        && selected.getBookmarks().size() == 1 && selected.getGroups().getFirst().getBookmarkIds().size() == 1, "subtree export detaches parent while retaining canonical shared bookmark");
+    check(BookmarkExchange.select(current, java.util.Set.of("ai-root", "ai-child")).getGroups().size() == 2, "overlapping selected subtrees export each group once");
+    reject(() -> BookmarkExchange.select(current, java.util.Set.of("missing")), "invalid export selection rejected");
+    var sameNames = BookmarkExchange.copy(current);
+    sameNames.getGroups().add(groupState("other-root", null, "其他根组"));
+    sameNames.getGroups().add(groupState("other-child", "other-root", "AI 子组"));
+    sameNames.getGroups().getLast().getBookmarkIds().add("ai-stable-bookmark");
+    var roots = BookmarkExchange.select(sameNames, java.util.Set.of("ai-child", "other-child"));
+    check(roots.getGroups().stream().map(GroupState::getName).distinct().count() == 2 && roots.getGroups().stream().allMatch(g -> g.getParentId() == null), "selected roots with duplicate names are deterministically renamed without losing references");
+    var identical = BookmarkExchange.plan(current, decoded, false, false);
+    check(BookmarkExchange.toJson(identical.getState(), null).equals(BookmarkExchange.toJson(current, null)), "reimporting the same JSON is idempotent");
+    var incoming = BookmarkExchange.copy(decoded);
+    incoming.getBookmarks().getFirst().setId("different-source-id");
+    incoming.getBookmarks().getFirst().setDescription("# 新的导入描述\n\n保留中文和换行\n");
+    incoming.getGroups().forEach(g -> { g.getBookmarkIds().clear(); g.getBookmarkIds().add("different-source-id"); });
+    incoming.getGroups().getFirst().setId("different-root-id");
+    incoming.getGroups().get(1).setParentId("different-root-id");
+    var merged = BookmarkExchange.plan(current, incoming, false, false);
+    check(merged.getState().getGroups().size() == 2 && merged.getState().getBookmarks().size() == 1, "merge reuses same group paths and same code location despite different IDs");
+    check(merged.getDescriptionConflicts() == 1 && current.getBookmarks().getFirst().getDescription().equals(merged.getState().getBookmarks().getFirst().getDescription()), "description conflict defaults to preserving existing text");
+    var preferred = BookmarkExchange.plan(current, incoming, false, true);
+    check(incoming.getBookmarks().getFirst().getDescription().equals(preferred.getState().getBookmarks().getFirst().getDescription()), "description conflict can use imported text");
+    check(!current.getBookmarks().getFirst().getDescription().equals(incoming.getBookmarks().getFirst().getDescription()), "preview computation never mutates current model");
+    var emptyDescription = BookmarkExchange.copy(current); emptyDescription.getBookmarks().getFirst().setDescription(null);
+    check(incoming.getBookmarks().getFirst().getDescription().equals(BookmarkExchange.plan(emptyDescription, incoming, false, false).getState().getBookmarks().getFirst().getDescription()), "merge fills an empty description without destroying a nonempty one");
+    var extra = new BookmarkState(); extra.setId("ai-stable-bookmark"); extra.setProvider(current.getBookmarks().getFirst().getProvider());
+    extra.getAttributes().put("url", file.getUrl()); extra.getAttributes().put("line", "0"); extra.setType(BookmarkType.LETTER_Z);
+    incoming.getBookmarks().getFirst().setType(BookmarkType.DEFAULT);
+    incoming.getBookmarks().add(extra); incoming.getGroups().getFirst().getBookmarkIds().add(extra.getId());
+    merged = BookmarkExchange.plan(current, incoming, false, false);
+    check(merged.getState().getBookmarks().size() == 2 && merged.getState().getBookmarks().stream().map(BookmarkState::getId).distinct().count() == 2, "colliding bookmark ID at another location receives a fresh ID");
+    check(merged.getState().getBookmarks().stream().filter(b -> b.getType() == BookmarkType.LETTER_Z).count() == 1
+        && merged.getState().getBookmarks().stream().anyMatch(b -> b.getType() == BookmarkType.DEFAULT), "occupied imported mnemonic becomes ordinary bookmark without replacing existing mnemonic");
+    var replaced = BookmarkExchange.plan(current, incoming, true, false);
+    check(BookmarkExchange.toJson(replaced.getState(), null).equals(BookmarkExchange.toJson(incoming, null)), "replace preview exactly matches imported snapshot");
+    var collidingGroup = BookmarkExchange.copy(current); collidingGroup.getGroups().getFirst().setName("新根分组");
+    var extraGroups = BookmarkExchange.plan(current, collidingGroup, false, false).getState();
+    check(extraGroups.getGroups().size() == 4 && extraGroups.getGroups().stream().map(GroupState::getId).distinct().count() == 4, "colliding group IDs at different paths get new IDs and keep the original subtree");
+    var empty = new ManagerState(); empty.setFormatVersion(2);
+    check(BookmarkExchange.plan(current, empty, false, false).getState().getBookmarks().size() == 1
+        && BookmarkExchange.plan(current, empty, true, false).getState().getBookmarks().isEmpty(), "empty document merges without deletion and replaces only when explicitly selected");
+    var unknown = BookmarkExchange.copy(current); unknown.getBookmarks().getFirst().setProvider("example.UnknownProvider");
+    unknown.getBookmarks().getFirst().getAttributes().put("opaque", "中文 & <tag>");
+    check(BookmarkExchange.fromJson(BookmarkExchange.toJson(unknown, base), base).getBookmarks().getFirst().getAttributes().get("opaque").equals("中文 & <tag>"), "unknown provider and opaque attributes survive JSON interchange");
+    var vcs = BookmarkExchange.copy(current); vcs.getBookmarks().getFirst().setProvider("com.intellij.platform.vcs.log.impl.bookmarks.VcsLogBookmarkProvider");
+    vcs.getBookmarks().getFirst().getAttributes().clear(); vcs.getBookmarks().getFirst().getAttributes().put("root", base.toString());
+    vcs.getBookmarks().getFirst().getAttributes().put("hash", "0123456789abcdef");
+    var vcsJson = BookmarkExchange.toJson(vcs, base);
+    check(vcsJson.contains("$PROJECT_DIR$") && BookmarkExchange.fromJson(vcsJson, base.resolve("other-checkout")).getBookmarks().getFirst().getAttributes().get("root").equals(base.resolve("other-checkout").toString()), "VCS repository roots are portable between checkouts");
+    var external = BookmarkExchange.copy(current); external.getBookmarks().getFirst().getAttributes().put("url", "file:///external/sample.txt");
+    check(BookmarkExchange.fromJson(BookmarkExchange.toJson(external, base), base).getBookmarks().getFirst().getAttributes().get("url").equals("file:///external/sample.txt"), "external file paths retained without guessing a replacement");
+    var markdown = BookmarkExchange.toMarkdown(current, base, "项目[中文]");
+    check(markdown.contains(current.getBookmarks().getFirst().getDescription()) && markdown.contains("AI 根组 / AI 子组"), "Markdown sharing includes full group paths and original Markdown text");
+    check(markdown.contains("sample.txt#L2") && !markdown.contains(base.toString()), "Markdown sharing uses project-relative links and one-based line anchors");
+    check(markdown.contains("项目\\[中文\\]"), "Markdown generated titles escape formatting characters");
+    var withSource = text.replaceFirst("\\{", "{\"_source\":{\"kind\":\"project\"},");
+    check(BookmarkExchange.fromJson(withSource, base).getGroups().size() == 2, "IDE accepts version-2 AI interchange metadata without applying source-path locks");
+    reject(() -> BookmarkExchange.fromJson(text.replace("\"formatVersion\": 2", "\"formatVersion\": 99"), base), "unknown JSON version rejected");
+    reject(() -> BookmarkExchange.fromJson(text.replaceFirst("\\{", "{\"unknown\":true,"), base), "unknown JSON fields rejected");
+    reject(() -> BookmarkExchange.fromJson(text.replaceFirst("\\{", "{\"formatVersion\":2,"), base), "duplicate JSON keys rejected");
+    reject(() -> BookmarkExchange.fromJson("{\"format\\u0056ersion\":2," + text.substring(1), base), "escaped duplicate JSON keys rejected");
+    reject(() -> BookmarkExchange.fromJson(text.replace("sample.txt", "../sample.txt"), base), "project-relative path traversal rejected");
+    reject(() -> BookmarkExchange.fromJson(text.replace("sample.txt", "..\\\\sample.txt"), base), "backslash path traversal rejected");
+    reject(() -> BookmarkExchange.fromJson(text.replace("\"isDefault\": false", "\"isDefault\": \"false\""), base), "JSON boolean fields reject strings");
+    reject(() -> BookmarkExchange.fromJson(text.replace("\"descriptionMarkdown\":", "\"descriptionMarkdown\": 42, \"other\":"), base), "invalid description schema rejected");
+    reject(() -> BookmarkExchange.fromJson(text.replace("\"ai-stable-bookmark\"", "\"\""), base), "empty canonical IDs rejected");
+    var sameFile = BookmarkExchange.copy(current); sameFile.getBookmarks().getFirst().getAttributes().remove("line");
+    var otherFile = new BookmarkState(); otherFile.setId("same-file"); otherFile.setProvider(sameFile.getBookmarks().getFirst().getProvider());
+    otherFile.getAttributes().put("url", file.getUrl()); otherFile.getAttributes().put("line", "-1");
+    sameFile.getBookmarks().add(otherFile); sameFile.getGroups().getFirst().getBookmarkIds().add("same-file");
+    reject(() -> BookmarkExchange.plan(current, sameFile, false, false), "equivalent file locations with absent line and minus-one line cannot create duplicates");
+    reject(() -> BookmarkExchange.fromJson("[".repeat(130) + "]".repeat(130), base), "excessive JSON nesting rejected before parser recursion");
+    reject(() -> BookmarkExchange.fromJson(" ".repeat(BookmarkExchange.MAX_BYTES + 1), base), "oversized JSON rejected");
+    var missingReference = BookmarkExchange.copy(current); missingReference.getGroups().getFirst().getBookmarkIds().add("missing");
+    reject(() -> BookmarkExchange.plan(current, missingReference, false, false), "invalid imported references rejected before preview or mutation");
+    for (String action : List.of("Bookmarks.ExportJson", "Bookmarks.ExportMarkdown", "Bookmarks.ImportJson")) {
+      check(com.intellij.openapi.actionSystem.ActionManager.getInstance().getAction(action) != null, "installed plugin registers " + action);
     }
   }
 

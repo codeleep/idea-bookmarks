@@ -13,7 +13,7 @@
 | 上游提交 | `32cd543bd4ee8e36118f392f28d07da04078849d` |
 | 插件 ID | `intellij.bookmarks.plugin` |
 | 插件名称 | `Bookmarks Manager (Local Source Build)` |
-| 插件版本 | `262.11879.100.6` |
+| 插件版本 | `262.11879.100.7` |
 | 验证环境 | 官方 IDEA 2026.2.4，macOS Apple Silicon，Java 25 |
 
 **安装采用 IDEA 的用户级插件更新机制。** 沿用官方插件 ID、Action ID 和服务接口，使用带稳定 ID 的独立书签表、分组树及引用结构，开发版本在用户插件目录中优先加载。IDE 中只有一套 Bookmarks，现有 Java、VCS、调试器和任务上下文可以继续使用相同接口。卸载这个用户级更新并重启后，IDEA 会使用安装目录内原有的内置版本；新格式数据的降级边界见 [存储说明](docs/STORAGE.md)。
@@ -63,7 +63,7 @@ SDK 的绝对路径仅写入本地 `.idea/` 和根目录 `.iml`，这两类文�
 
 ## 4. 构建与开发运行
 
-构建安装包，产物为 `dist/bookmarks-desktop-262.11879.100.6.zip`。
+构建安装包，产物为 `dist/bookmarks-desktop-262.11879.100.7.zip`。
 
 ```bash
 ./gradlew buildPlugin
@@ -112,9 +112,9 @@ PR 合入 `main` 后会自动构建并发布新版本；版本标签为 `v` 加 
 
 1. 确认 `Help → About` 中的版本为 IDEA 2026.2.4，构建号 `262.11879.100`。
 2. 打开 `Settings → Plugins → 齿轮 → Install Plugin from Disk`。
-3. 选择 `dist/bookmarks-desktop-262.11879.100.6.zip`。
+3. 选择 `dist/bookmarks-desktop-262.11879.100.7.zip`。
 4. 确认本地构建插件的来源提示，应用设置并重启 IDEA。
-5. 已安装插件中应显示 `Bookmarks Manager (Local Source Build)`，版本 `262.11879.100.6`。
+5. 已安装插件中应显示 `Bookmarks Manager (Local Source Build)`，版本 `262.11879.100.7`。
 6. 打开 `View → Tool Windows → Bookmarks`，添加和导航书签。
 
 本机旧版 IDEA 2025.2.1 不在兼容范围内。用户插件目录由 IDEA 管理，安装过程不需要拷贝文件到 `.app/Contents/plugins` 或修改 IDEA 的 JAR。
@@ -146,7 +146,18 @@ Git 分支继续沿用官方 `BranchContextTracker → WorkingContextManager` �
 
 [存储结构说明](docs/STORAGE.md) 列出了格式、位置、迁移、设置和降级边界。[AI 整理指南](docs/AI_BOOKMARKS.md) 提供当前项目及指定 Git 分支历史的导出、编辑、校验、写回和验收步骤。工具要求目标项目关闭，校验源文件版本并自动备份，避免覆盖其他分支的上下文。
 
-## 9. 验证与源码归档
+## 9. 导入、导出与分享
+
+在 Bookmarks 工具栏或右键菜单打开“导入、导出与分享”。可以导出当前上下文全部书签，或选中分组及其完整子树。
+
+- **JSON**：保留分组树、多组引用、共享 Markdown、快捷标记和稳定 ID；项目内路径自动转为项目相对路径，便于换目录或分享给同一项目的其他检出。
+- **Markdown**：导出分组路径、代码位置、相对代码链接和原始描述，作为代码阅读文档分享；建议保存到项目根目录。
+- **导入 JSON**：默认合并，可选择替换；先查看变更明细及 IDEA 原生差异对比，再确认导入。描述冲突可选择保留现有或采用导入内容。
+- **恢复**：导入前自动备份到 `.idea/bookmarks-import-backups/`，备份失败则不写入；需要恢复时重新导入备份并选择替换。
+
+导入只操作当前书签上下文，不批量改写其他 Git 分支已保存的快照；预览期间数据改变会拒绝写入。详细规则和限制见 [导入导出说明](docs/IMPORT_EXPORT.md)。
+
+## 10. 验证与源码归档
 
 检查原始快照并运行实际 IDE 内的冒烟检查。
 
@@ -154,7 +165,7 @@ Git 分支继续沿用官方 `BranchContextTracker → WorkingContextManager` �
 ./gradlew verifyOriginalSources smokeTest
 ```
 
-自动检查共 122 项，覆盖插件实际加载、原生 Markdown 文档及编辑器提供器、编辑回写、多层分组、循环拦截、嵌套导航、XML 恢复和旧数据迁移，以及多组引用、共享描述、删除范围和代码行位置变化。新版增加格式 2、原版分支保存/恢复、严格校验、未知 provider 保留和 AI 写入格式与 IDE 读取的联通检查。历史 GUI 检查见 `docs/VALIDATION.md`，当前验证见 `docs/evidence/runtime-validation.json`。
+自动检查共 173 项，覆盖插件实际加载、原生 Markdown 文档及编辑器提供器、编辑回写、多层分组、循环拦截、嵌套导航、XML 恢复和旧数据迁移，以及多组引用、共享描述、删除范围和代码行位置变化。新版增加格式 2、原版分支保存/恢复、严格校验、未知 provider 保留和 AI 写入格式与 IDE 读取的联通检查。导入导出新增真实导航、可移植 JSON 与离线工具互通、合并冲突、备份失败拦截、旧编辑缓冲区隔离和预览过期保护检查。历史 GUI 检查见 `docs/VALIDATION.md`，当前验证见 `docs/evidence/runtime-validation.json`。
 
 生成可分享的完整工程源码包。
 
@@ -162,8 +173,8 @@ Git 分支继续沿用官方 `BranchContextTracker → WorkingContextManager` �
 ./gradlew sourceZip
 ```
 
-产物为 `dist/idea-bookmarks-262.11879.100.6-sources.zip`。源码归档包含可编辑模块、官方公开源码快照、Wrapper、工具、测试和文档；官方 IDEA SDK、下载缓存及本机配置不放入归档。
+产物为 `dist/idea-bookmarks-262.11879.100.7-sources.zip`。源码归档包含可编辑模块、官方公开源码快照、Wrapper、工具、测试和文档；官方 IDEA SDK、下载缓存及本机配置不放入归档。
 
-## 10. 来源与许可
+## 11. 来源与许可
 
 原始源码文件的 JetBrains 版权和 Apache 2.0 声明保持原样。工程保留 `NOTICE.txt`、`LICENSE-APACHE-2.0.txt` 和上游 `official/LICENSE.txt`。本地构建产物使用明确的开发版名称和供应商信息。

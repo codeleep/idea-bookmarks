@@ -13,6 +13,7 @@
     <module name="intellij.platform.core.ui"/>
     <module name="intellij.platform.editor.ex"/>
     <module name="intellij.platform.editor.ui"/>
+    <module name="intellij.platform.diff"/>
     <module name="intellij.platform.execution"/>
     <module name="intellij.platform.ide.concurrency"/>
     <module name="intellij.platform.ide.core"/>
@@ -60,6 +61,12 @@
 
   <actions resource-bundle="messages.ActionsBundle">
     <group id="Bookmarks" popup="true">
+      <group id="Bookmarks.Exchange" popup="true" text="导入、导出与分享" icon="AllIcons.Actions.MenuSaveall">
+        <action id="Bookmarks.ExportJson" class="com.intellij.ide.bookmark.actions.ExportBookmarksJsonAction"/>
+        <action id="Bookmarks.ExportMarkdown" class="com.intellij.ide.bookmark.actions.ExportBookmarksMarkdownAction"/>
+        <separator/>
+        <action id="Bookmarks.ImportJson" class="com.intellij.ide.bookmark.actions.ImportBookmarksJsonAction"/>
+      </group>
       <action id="ManageBookmarkGroups" icon="AllIcons.Nodes.BookmarkGroup" class="com.intellij.ide.bookmark.actions.ManageBookmarkGroupsAction"/>
       <action id="AddAnotherBookmark" class="com.intellij.ide.bookmark.actions.AddAnotherBookmarkAction"/>
       <action id="EditBookmark" icon="AllIcons.Actions.Edit"
@@ -157,6 +164,8 @@
       </group>
 
       <group id="Bookmarks.ToolWindow.PopupMenu">
+        <reference ref="Bookmarks.Exchange"/>
+        <separator/>
         <reference ref="ManageBookmarkGroups"/>
         <action id="BookmarksView.CreateSubgroup" icon="AllIcons.Nodes.Folder"
                 class="com.intellij.ide.bookmark.actions.CreateSubgroupAction"/>
@@ -183,6 +192,7 @@
       </group>
 
       <group id="Bookmarks.ToolWindow.TitleActions">
+        <reference ref="Bookmarks.Exchange"/>
         <reference ref="ManageBookmarkGroups"/>
         <action id="BookmarksView.Create" icon="AllIcons.Actions.AddList" use-shortcut-of="NewElement"
                 class="com.intellij.ide.bookmark.actions.GroupCreateAction"/>
@@ -244,6 +254,7 @@
     </group>
 
     <group id="EditBookmarksGroup" popup="true" searchable="false">
+      <reference ref="Bookmarks.Exchange"/>
       <reference ref="popup@BookmarkContextMenu"/>
       <separator/>
       <reference ref="GotoPreviousBookmark"/>

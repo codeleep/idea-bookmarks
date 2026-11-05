@@ -91,6 +91,26 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
 
   override fun getStateModificationCount(): Long = notifier.count
 
+  /** Capture/compare/apply under the model lock so an import cannot overwrite a newer context. */
+  fun captureForExchange(): ManagerState = synchronized(notifier) {
+    check(!isRestoringBookmarks()) { "书签正在恢复，请稍后重试" }
+    BookmarkExchange.copy(state)
+  }
+
+  fun applyExchange(expected: ManagerState, revision: Long, imported: ManagerState): java.nio.file.Path = synchronized(notifier) {
+    check(!isRestoringBookmarks() && notifier.count == revision &&
+          BookmarkExchange.toJson(state, null) == BookmarkExchange.toJson(expected, null)) {
+      "书签或分支在预览期间发生了变化，请重新导入并预览"
+    }
+    BookmarkStorageFormat.validate(imported)
+    val base = java.nio.file.Path.of(requireNotNull(project.basePath) { "项目没有可用的目录" })
+    val backup = base.resolve(".idea/bookmarks-import-backups/bookmarks-${System.currentTimeMillis()}-${UUID.randomUUID()}.json")
+    BookmarkExchange.write(backup, BookmarkExchange.toJson(expected, base))
+    com.intellij.ide.bookmark.ui.MarkdownDescriptionEditor.getInstance(project).closeForImport()
+    loadState(imported)
+    backup
+  }
+
   override fun getState(): ManagerState = synchronized(notifier) {
     if (isRestoringBookmarks()) restoringSnapshot?.let { return@synchronized it }
     restoringSnapshot = null

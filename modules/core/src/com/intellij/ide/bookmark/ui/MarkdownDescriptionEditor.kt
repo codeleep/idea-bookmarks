@@ -79,6 +79,9 @@ class MarkdownDescriptionEditor(private val project: Project) : Disposable {
     }
   }
 
+  /** Detach old document listeners before importing a new canonical snapshot. */
+  fun closeForImport() = closeMatching { true }
+
   init {
     val bus = project.messageBus.connect(this)
     bus.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerListener {
