@@ -107,6 +107,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         manager.loadState(state);
       });
       await(() -> manager.getBookmark(BookmarkType.LETTER_A) != null, "original bookmark state restored");
+      BreakpointActionsSmoke.verify(project, file, manager);
       edt(BookmarkSmokeStarter::hierarchyAndMarkdown);
       await(() -> manager.getBookmark(BookmarkType.LETTER_B) != null, "nested bookmark restored from XML");
       edt(BookmarkSmokeStarter::verifyHierarchyAndTree);

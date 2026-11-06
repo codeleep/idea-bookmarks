@@ -82,7 +82,8 @@ def smoke(sdk, plugin_archive=None, anchors_only=False):
     args = ["-encoding", "UTF-8", "--release", "25", "-proc:none", "-classpath",
             os.pathsep.join(map(str, classpath)), "-d", str(sandbox / "helper-classes"),
             str(ROOT / "tests/runtime/AnchorSmokeStarter.java")]
-    if not anchors_only: args.append(str(ROOT / "tests/runtime/BookmarkSmokeStarter.java"))
+    if not anchors_only:
+        args.extend(str(ROOT / "tests/runtime" / name) for name in ("BookmarkSmokeStarter.java", "BreakpointActionsSmoke.java"))
     arguments = sandbox / "javac.args"
     arguments.write_text("\n".join(json.dumps(value, ensure_ascii=False) for value in args))
     subprocess.run([str(java_home / "bin/javac"), "@" + str(arguments)], check=True)
@@ -92,10 +93,11 @@ def smoke(sdk, plugin_archive=None, anchors_only=False):
         for path in (sandbox / "helper-classes").rglob("*.class"):
             output.write(path, path.relative_to(sandbox / "helper-classes").as_posix())
         starter = "AnchorSmokeStarter" if anchors_only else "BookmarkSmokeStarter"
+        breakpoint_type = '' if anchors_only else '<xdebugger.breakpointType implementation="bookmarks.validation.BreakpointActionsSmoke$LineType"/>'
         output.writestr("META-INF/plugin.xml", f"""<idea-plugin>
   <id>bookmarks.validation</id><name>Bookmarks validation</name><version>1</version><vendor>Local</vendor>
   <depends>com.intellij.modules.platform</depends><depends>intellij.bookmarks.plugin</depends>
-  <extensions defaultExtensionNs="com.intellij"><appStarter id="bookmarks-source-smoke" implementation="bookmarks.validation.{starter}"/></extensions>
+  <extensions defaultExtensionNs="com.intellij"><appStarter id="bookmarks-source-smoke" implementation="bookmarks.validation.{starter}"/>{breakpoint_type}</extensions>
 </idea-plugin>""")
     system = {"Darwin": "macOS", "Linux": "Linux", "Windows": "Windows"}[platform.system()]
     architectures = {"aarch64", "arm64"} if platform.machine().lower() in {"aarch64", "arm64"} else {"amd64", "x86_64", "x64"}

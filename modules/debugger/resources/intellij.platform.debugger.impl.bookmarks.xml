@@ -22,4 +22,13 @@
   <extensions defaultExtensionNs="com.intellij">
     <bookmarksListProvider implementation="com.intellij.platform.debugger.impl.bookmarks.BreakpointListProvider"/>
   </extensions>
+
+  <actions>
+    <group id="Bookmarks.Breakpoints.StateActions">
+      <action id="Bookmarks.Breakpoints.Enable" class="com.intellij.platform.debugger.impl.bookmarks.EnableBreakpointsAction"/>
+      <action id="Bookmarks.Breakpoints.Disable" class="com.intellij.platform.debugger.impl.bookmarks.DisableBreakpointsAction"/>
+      <separator/>
+      <add-to-group group-id="Bookmarks.ToolWindow.PopupMenu" anchor="first"/>
+    </group>
+  </actions>
 </idea-plugin>

@@ -1,0 +1,32 @@
+{
+  "pluginVersion": "262.11879.100.8",
+  "sdkVersion": "2026.2.4",
+  "sdkBuild": "262.11879.100",
+  "date": "2026-11-06",
+  "archiveSha256": "60f5dea04d97f35796dea8229023aea9ee2a1ad3bc58268eaa0a96d0df7416e6",
+  "installation": "isolated user plugins directory; official IDE and user projects untouched",
+  "fixture": "three native Java line breakpoints in a separate source fixture",
+  "checks": {
+    "rightClickSingleDisable": true,
+    "rightClickSingleEnable": true,
+    "rightClickBulkDisable": true,
+    "rightClickBulkEnable": true,
+    "mixedSelectionUniformEnable": true,
+    "mixedSelectionUniformDisable": true,
+    "unselectedBreakpointPreserved": true,
+    "enabledRowReturnsToNormalColor": true,
+    "gutterAndListIconsAgree": true,
+    "disabledBreakpointNavigationPosition": "BreakpointFixture.java:3:1",
+    "savedNativeStatesZeroBased": {
+      "2": false,
+      "3": false,
+      "4": true
+    },
+    "sameStatesVisibleAfterIdeRestart": true,
+    "sourceFixtureUnchanged": true,
+    "fourInstalledJarsMatchZip": true,
+    "newErrorOrSevereLogLines": 0,
+    "bothGuiInstancesExitedNormally": true
+  },
+  "boundaries": "Context menus were invoked by right-click and their actions selected with Arrow/Enter; the popup text itself was not captured by the automation surface. Native checks separately verify action registration, order, visibility and enabled state. GUI checked local Java breakpoints, selection effects, navigation, persistence and restart; other XDebugger breakpoint types use the same native BreakpointItem API. No debug session was started. No tag or Release was created."
+}
