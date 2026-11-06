@@ -36,6 +36,17 @@ import javax.swing.JTree
 import kotlin.time.Duration.Companion.milliseconds
 
 internal class BreakpointListProvider(private val project: Project) : BookmarksListProvider {
+  companion object {
+    internal fun selectedItems(project: Project, selection: Array<out Any>?): List<BreakpointItem>? {
+      if (project.isDisposed || selection.isNullOrEmpty()) return null
+      return selection.map { selected ->
+        val node = selected as? ItemNode ?: return null
+        if (node.ownerProject !== project) return null
+        node.value.takeUnless { it.breakpoint?.isDisposed() == true } ?: return null
+      }.distinct()
+    }
+  }
+
   private data class GroupKey(val group: XBreakpointGroup, val parentKey: Any)
   @Suppress("SpellCheckingInspection")
   @PropertyKey(resourceBundle = XDebuggerBundle.BUNDLE)
@@ -183,7 +194,7 @@ internal class BreakpointListProvider(private val project: Project) : BookmarksL
   }
 
 
-  private class ItemNode(project: Project, item: BreakpointItem) : AbstractTreeNode<BreakpointItem>(project, item) {
+  private class ItemNode(val ownerProject: Project, item: BreakpointItem) : AbstractTreeNode<BreakpointItem>(ownerProject, item) {
 
     override fun canNavigate(): Boolean = value.canNavigate()
     override fun canNavigateToSource(): Boolean = value.canNavigateToSource()
@@ -195,7 +206,7 @@ internal class BreakpointListProvider(private val project: Project) : BookmarksL
     override fun update(presentation: PresentationData) {
       presentation.setIcon(value.icon)
       presentation.presentableText = value.displayText
-      if (!value.isEnabled) presentation.forcedTextForeground = NamedColorUtil.getInactiveTextColor()
+      presentation.forcedTextForeground = if (value.isEnabled) null else NamedColorUtil.getInactiveTextColor()
     }
   }
 }
