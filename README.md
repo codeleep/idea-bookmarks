@@ -13,7 +13,7 @@
 | 上游提交 | `32cd543bd4ee8e36118f392f28d07da04078849d` |
 | 插件 ID | `intellij.bookmarks.plugin` |
 | 插件名称 | `Bookmarks Manager (Local Source Build)` |
-| 插件版本 | `262.11879.100.7` |
+| 插件版本 | `262.11879.100.8` |
 | 验证环境 | 官方 IDEA 2026.2.4，macOS Apple Silicon，Java 25 |
 
 **安装采用 IDEA 的用户级插件更新机制。** 沿用官方插件 ID、Action ID 和服务接口，使用带稳定 ID 的独立书签表、分组树及引用结构，开发版本在用户插件目录中优先加载。IDE 中只有一套 Bookmarks，现有 Java、VCS、调试器和任务上下文可以继续使用相同接口。卸载这个用户级更新并重启后，IDEA 会使用安装目录内原有的内置版本；新格式数据的降级边界见 [存储说明](docs/STORAGE.md)。
@@ -63,7 +63,7 @@ SDK 的绝对路径仅写入本地 `.idea/` 和根目录 `.iml`，这两类文�
 
 ## 4. 构建与开发运行
 
-构建安装包，产物为 `dist/bookmarks-desktop-262.11879.100.7.zip`。
+构建安装包，产物为 `dist/bookmarks-desktop-262.11879.100.8.zip`。
 
 ```bash
 ./gradlew buildPlugin
@@ -96,7 +96,7 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 **只有推送匹配版本的 tag 才会打包分发并发布 Release。** 分支推送、PR 和合入 `main` 只做编译及 IDE 运行验证，不上传正式安装包，也不创建 Release 或自动创建 tag。
 
 1. 在 `feature/<名称>` 或 `fixbug/<名称>` 分支开发，通过 PR 合入 `main`。
-2. 需要发版时，确认 `plugin/plugin.xml` 的版本号，在对应的 `main` 已合入提交上创建并推送 `v<版本号>` tag，例如 `v262.11879.100.7`。
+2. 需要发版时，确认 `plugin/plugin.xml` 的版本号，在对应的 `main` 已合入提交上创建并推送 `v<版本号>` tag，例如 `v262.11879.100.8`。
 3. tag 工作流校验版本、提交及 `main` 归属，构建验证成功后上传安装包、完整源码及报告，创建对应 Release。
 4. 在 IDEA 中执行 **Install Plugin from Disk**，直接选择 Release 中的 ZIP，然后重启。
 
@@ -114,9 +114,9 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 
 1. 确认 `Help → About` 中的版本为 IDEA 2026.2.4，构建号 `262.11879.100`。
 2. 打开 `Settings → Plugins → 齿轮 → Install Plugin from Disk`。
-3. 选择 `dist/bookmarks-desktop-262.11879.100.7.zip`。
+3. 选择 `dist/bookmarks-desktop-262.11879.100.8.zip`。
 4. 确认本地构建插件的来源提示，应用设置并重启 IDEA。
-5. 已安装插件中应显示 `Bookmarks Manager (Local Source Build)`，版本 `262.11879.100.7`。
+5. 已安装插件中应显示 `Bookmarks Manager (Local Source Build)`，版本 `262.11879.100.8`。
 6. 打开 `View → Tool Windows → Bookmarks`，添加和导航书签。
 
 本机旧版 IDEA 2025.2.1 不在兼容范围内。用户插件目录由 IDEA 管理，安装过程不需要拷贝文件到 `.app/Contents/plugins` 或修改 IDEA 的 JAR。
@@ -126,6 +126,8 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 选中行书签或文件书签，点击“编辑”或使用书签的编辑动作。描述会在 **IDEA 自带的 Markdown 编辑页**打开，支持原生语法高亮、格式化、补全和编辑/预览布局切换。编辑内容即时保存到各组共享的书签记录，可使用 IDEA 的撤销功能修改；关闭编辑页不会丢失已保存描述。
 
 编辑页使用内存中的 Markdown 文档，项目目录不会新增 `.md` 文件。同一个书签可以同时属于多个组，所有组共享一份 Markdown 描述和同一个编辑缓冲区。在任意组修改会同步更新；移除某个组的引用后，其他组仍可查看和编辑。完整原文保存在书签的 `description` 字段，中文、多行、空行和 Markdown 标记均保留。选中单个真实书签时，Bookmarks 工具窗口下方显示“描述”面板，提供只读摘要预览；选中分组、仅用于聚合的文件节点、多项或清空选择时，面板及其分隔条一起收起，列表使用完整空间。树节点和侧栏提示只显示描述的单行摘要。原生编辑页的渲染、图片和扩展能力遵循内置 Markdown 插件的设置；工具窗口的轻量预览支持常用格式，不自动加载图片。
+
+将鼠标停在代码编辑器左侧的书签图标上，会在悬停提示首行加粗显示书签名称，名称与列表一致，取描述的第一行摘要；Markdown 标题和粗体等标记会去掉。下方保留助记符和快捷键信息，描述正文不整篇弹出。修改任意所属组里的共享描述后，提示同步更新；空描述沿用普通书签提示。
 
 选中书签后，使用工具栏、右键菜单或 Find Action 中的“管理所属分组…”，在树中勾选多个组。父组与子组独立勾选，至少保留一个组；删除书签请使用删除操作。
 
@@ -173,7 +175,7 @@ AI 行书签的 `line` 从 0 开始；`lineText` 可省略，提供时必须保�
 ./gradlew verifyOriginalSources smokeTest
 ```
 
-自动检查共 224 项，覆盖插件实际加载、原生 Markdown 文档及编辑器提供器、编辑回写、多层分组、循环拦截、嵌套导航、XML 恢复和旧数据迁移，以及多组引用、共享描述、删除范围和代码行位置变化。新版增加格式 2、原版分支保存/恢复、严格校验、未知 provider 保留和 AI 写入格式与 IDE 读取的联通检查。导入导出新增真实导航、可移植 JSON 与离线工具互通、合并冲突、备份失败拦截、旧编辑缓冲区隔离和预览过期保护检查。精确锚点新增缩进、Tab、尾空白、中文、严格失效节点及原版保护检查，另在已发布 `.6` 上通过 31 项兼容检查并完成真实界面跳转，记录见 `docs/evidence/exact-anchor-validation.json`。全文搜索增加完整正文、代码块、长行尾部、中文、组合匹配、共享去重、Unicode 摘要偏移及工具栏注册检查；实际界面搜索和跳转记录见 `docs/evidence/gui-search-validation.json`。历史 GUI 检查见 `docs/VALIDATION.md`，当前验证见 `docs/evidence/runtime-validation.json`。
+自动检查共 233 项，覆盖插件实际加载、原生 Markdown 文档及编辑器提供器、编辑回写、多层分组、循环拦截、嵌套导航、XML 恢复和旧数据迁移，以及多组引用、共享描述、删除范围和代码行位置变化。新版增加格式 2、原版分支保存/恢复、严格校验、未知 provider 保留和 AI 写入格式与 IDE 读取的联通检查。导入导出新增真实导航、可移植 JSON 与离线工具互通、合并冲突、备份失败拦截、旧编辑缓冲区隔离和预览过期保护检查。精确锚点新增缩进、Tab、尾空白、中文、严格失效节点及原版保护检查，另在已发布 `.6` 上通过 31 项兼容检查并完成真实界面跳转，记录见 `docs/evidence/exact-anchor-validation.json`。全文搜索增加完整正文、代码块、长行尾部、中文、组合匹配、共享去重、Unicode 摘要偏移及工具栏注册检查；实际界面搜索和跳转记录见 `docs/evidence/gui-search-validation.json`。书签图标提示新增名称、中文及特殊字符、共享更新、空描述和只读性检查。历史 GUI 检查见 `docs/VALIDATION.md`，当前验证见 `docs/evidence/runtime-validation.json`。
 
 生成可分享的完整工程源码包。
 
@@ -181,7 +183,7 @@ AI 行书签的 `line` 从 0 开始；`lineText` 可省略，提供时必须保�
 ./gradlew sourceZip
 ```
 
-产物为 `dist/idea-bookmarks-262.11879.100.7-sources.zip`。源码归档包含可编辑模块、官方公开源码快照、Wrapper、工具、测试和文档；官方 IDEA SDK、下载缓存及本机配置不放入归档。
+产物为 `dist/idea-bookmarks-262.11879.100.8-sources.zip`。源码归档包含可编辑模块、官方公开源码快照、Wrapper、工具、测试和文档；官方 IDEA SDK、下载缓存及本机配置不放入归档。
 
 ## 11. 来源与许可
 

@@ -58,15 +58,15 @@ internal data class GutterLineBookmarkRenderer(val bookmark: LineBookmark) : Dum
     val mnemonic = type.let { if (it == BookmarkType.DEFAULT) null else it.mnemonic }
     mnemonic?.let { result.append(" ").append(it) }
 
-    val description = manager?.getGroups(bookmark)?.firstNotNullOfOrNull { group -> group.getDescription(bookmark) }
-
-    description?.let { if (it.isNotEmpty()) result.append(": ").append(escapeXmlEntities(MarkdownDescriptions.summary(it))) }
-
     val shortcut = mnemonic?.let { getShortcut(it) } ?: getShortcut()
     shortcut?.let { if (it.isNotEmpty()) result.append(" (").append(it).append(")") }
 
+    val name = manager?.getGroups(bookmark)?.firstNotNullOfOrNull { group -> group.getDescription(bookmark) }
+      ?.let(MarkdownDescriptions::summary)?.takeIf { it.isNotBlank() }
+
     @Suppress("HardCodedStringLiteral")
-    return result.toString()
+    return if (name == null) result.toString()
+    else "<html><b>${escapeXmlEntities(name)}</b><br>${escapeXmlEntities(result.toString())}</html>"
   }
 
   private fun getShortcut(): String? {
@@ -118,6 +118,7 @@ internal data class GutterLineBookmarkRenderer(val bookmark: LineBookmark) : Dum
     else {
       existingHighlighter.gutterIconRenderer = null
       existingHighlighter.gutterIconRenderer = this
+      existingHighlighter.errorStripeTooltip = tooltipText
     }
   }
 }

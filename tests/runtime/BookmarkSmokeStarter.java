@@ -113,6 +113,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
       edt(BookmarkSmokeStarter::multiGroupBookmarks);
       await(() -> manager.getBookmark(BookmarkType.DIGIT_2) != null && manager.getGroups(manager.getBookmark(BookmarkType.DIGIT_2)).size() == 3,
             "multi-group line bookmark restored from XML");
+      edt(BookmarkSmokeStarter::gutterNameTooltip);
       edt(BookmarkSmokeStarter::verifySharedBookmarkRestoreAndDeletion);
       edt(BookmarkSmokeStarter::migrateDifferentDescriptions);
       await(() -> manager.getGroups().size() == 2 && manager.getGroups().stream().allMatch(g -> !g.getBookmarks().isEmpty()), "legacy duplicate bookmark memberships restored");
@@ -249,6 +250,25 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     boolean rejected = false;
     try { action.run(); } catch (IllegalArgumentException | IllegalStateException expected) { rejected = true; }
     check(rejected, label);
+  }
+
+  private static void gutterNameTooltip() {
+    var bookmark = manager.getBookmark(BookmarkType.DIGIT_2);
+    var renderer = new GutterLineBookmarkRenderer((LineBookmark)bookmark);
+    var before = BookmarkExchange.toJson(manager.captureForExchange(), null);
+    var tooltip = renderer.getTooltipText();
+    check(tooltip.contains("CDC 链路") && !tooltip.contains("# CDC"), "real gutter tooltip uses the same Markdown first-line name as the bookmark tree");
+    check(!tooltip.contains("reader.poll") && !tooltip.contains("SourceReader"), "gutter hover shows the name without the full Markdown body");
+    check(renderer.getClickAction() != null && renderer.getMiddleButtonClickAction() != null && renderer.getIcon() != null, "name tooltip preserves bookmark icon and click actions");
+    check(tooltip.contains("2"), "gutter tooltip retains the bookmark mnemonic");
+    check(before.equals(BookmarkExchange.toJson(manager.captureForExchange(), null)), "reading the gutter name does not change bookmarks descriptions IDs or references");
+    manager.getGroupById(sharedB).setDescription(bookmark, "# 改后的名字 <入口> & 中文\n\n正文不出现在悬停名称里");
+    check(renderer.getTooltipText().contains("改后的名字") && !renderer.getTooltipText().contains("CDC 链路"), "editing from another group immediately updates the shared gutter name");
+    check(renderer.getTooltipText().contains("<b>改后的名字 &lt;入口&gt; &amp; 中文</b>"), "gutter tooltip emphasizes and safely escapes the bookmark name on its first line");
+    manager.getGroupById(sharedA).setDescription(bookmark, "\n  \t\n");
+    check(!renderer.getTooltipText().contains("<b>") && !renderer.getTooltipText().contains("null"), "blank descriptions keep the ordinary bookmark tooltip without an empty title");
+    manager.getGroupById(sharedA).setDescription(bookmark, MARKDOWN);
+    check(renderer.getTooltipText().contains("CDC 链路") && !renderer.getTooltipText().contains("改后的名字"), "restoring the shared description also restores the gutter name");
   }
 
   private static void bookmarkSearch() {

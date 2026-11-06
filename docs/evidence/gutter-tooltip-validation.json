@@ -1,0 +1,28 @@
+{
+  "pluginVersion": "262.11879.100.8",
+  "sdkVersion": "2026.2.4",
+  "sdkBuild": "262.11879.100",
+  "date": "2026-11-06",
+  "archiveSha256": "beff9cfddaab483ccfe77e0ea2962df586e5af661f262ec585404eb6018a3b37",
+  "nativeRendererChecks": {
+    "nameMatchesTreeSummary": true,
+    "markdownBodyExcluded": true,
+    "iconAndActionsPreserved": true,
+    "mnemonicPreserved": true,
+    "readOnly": true,
+    "sharedDescriptionUpdatesName": true,
+    "nameEmphasizedAndHtmlEscaped": true,
+    "blankDescriptionFallback": true,
+    "restoringDescriptionRestoresName": true
+  },
+  "guiChecks": {
+    "isolatedOfficialIdeStarted": true,
+    "fourInstalledJarsMatchZip": true,
+    "gutterIconsVisible": true,
+    "bookmarkModelUnchangedAfterExit": true,
+    "newErrorOrSevereLogLines": 0,
+    "isolatedInstanceExitedNormally": true,
+    "hoverPopupVisuallyVerified": false
+  },
+  "boundaries": "Native IDE checks invoke the concrete gutter renderer against the live bookmark manager. The automation surface has no hover primitive and did not capture a passive hover popup, so popup visual layout and existing highlighter error-stripe refresh are not claimed as GUI-accepted. Official SDK and user projects/installations were not modified. No tag or Release was created."
+}
