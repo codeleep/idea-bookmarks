@@ -106,18 +106,18 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         check(manager.getBookmarks().isEmpty(), "bookmarks removed");
         manager.loadState(state);
       });
-      await(() -> manager.getBookmark(BookmarkType.LETTER_A) != null, "original bookmark state restored");
+      await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_A) != null, "original bookmark state restored");
       BreakpointActionsSmoke.verify(project, file, manager);
       edt(BookmarkSmokeStarter::hierarchyAndMarkdown);
-      await(() -> manager.getBookmark(BookmarkType.LETTER_B) != null, "nested bookmark restored from XML");
+      await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_B) != null, "nested bookmark restored from XML");
       edt(BookmarkSmokeStarter::verifyHierarchyAndTree);
       edt(BookmarkSmokeStarter::multiGroupBookmarks);
-      await(() -> manager.getBookmark(BookmarkType.DIGIT_2) != null && manager.getGroups(manager.getBookmark(BookmarkType.DIGIT_2)).size() == 3,
+      await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.DIGIT_2) != null && manager.getGroups(manager.getBookmark(BookmarkType.DIGIT_2)).size() == 3,
             "multi-group line bookmark restored from XML");
       edt(BookmarkSmokeStarter::gutterNameTooltip);
       edt(BookmarkSmokeStarter::verifySharedBookmarkRestoreAndDeletion);
       edt(BookmarkSmokeStarter::migrateDifferentDescriptions);
-      await(() -> manager.getGroups().size() == 2 && manager.getGroups().stream().allMatch(g -> !g.getBookmarks().isEmpty()), "legacy duplicate bookmark memberships restored");
+      await(() -> !manager.isRestoringBookmarks() && manager.getGroups().size() == 2 && manager.getGroups().stream().allMatch(g -> !g.getBookmarks().isEmpty()), "legacy duplicate bookmark memberships restored");
       edt(() -> {
         Bookmark bookmark = manager.getGroups().get(0).getBookmarks().get(0);
         migratedDescription = manager.getGroups().get(0).getDescription(bookmark);
@@ -125,13 +125,13 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         check(manager.getGroups().stream().allMatch(g -> migratedDescription.equals(g.getDescription(bookmark))), "migrated description shared by every group");
         manager.loadState(XmlSerializer.deserialize(XmlSerializer.serialize(manager.getState()), ManagerState.class));
       });
-      await(() -> manager.getGroups().size() == 2 && manager.getGroups().stream().allMatch(g -> !g.getBookmarks().isEmpty()), "merged legacy description restored again");
+      await(() -> !manager.isRestoringBookmarks() && manager.getGroups().size() == 2 && manager.getGroups().stream().allMatch(g -> !g.getBookmarks().isEmpty()), "merged legacy description restored again");
       edt(() -> {
         Bookmark bookmark = manager.getGroups().get(0).getBookmarks().get(0);
         check(migratedDescription.equals(manager.getGroups().get(0).getDescription(bookmark)), "legacy description migration is idempotent");
       });
       edt(BookmarkSmokeStarter::legacyAndDamagedState);
-      await(() -> manager.getBookmark(BookmarkType.LETTER_C) != null, "old flat bookmark migrated");
+      await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_C) != null, "old flat bookmark migrated");
       edt(() -> {
         check(manager.getChildGroups(null).size() == 1, "old flat list remains a root group");
         check("旧描述\n保留换行".equals(manager.getGroup("Legacy").getDescription(manager.getBookmark(BookmarkType.LETTER_C))), "legacy description preserved exactly");
