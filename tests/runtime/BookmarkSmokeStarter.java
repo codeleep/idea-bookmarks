@@ -108,6 +108,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
       });
       await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_A) != null, "original bookmark state restored");
       BreakpointActionsSmoke.verify(project, file, manager);
+      BookmarkWorkflowsSmoke.verify(project, manager);
       edt(BookmarkSmokeStarter::hierarchyAndMarkdown);
       await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_B) != null, "nested bookmark restored from XML");
       edt(BookmarkSmokeStarter::verifyHierarchyAndTree);
@@ -208,11 +209,14 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
           incoming.getBookmarks().getFirst().setDescription("# 导入的共享描述\n\n**中文** & <tag>\n");
           var plan = BookmarkExchange.plan(current, incoming, false, true);
           var blocked = filePath.getParent().resolve(".idea/bookmarks-import-backups");
+          var earlierBackups = blocked.resolveSibling("bookmarks-import-backups-earlier-test");
+          if (Files.exists(blocked)) Files.move(blocked, earlierBackups);
           Files.writeString(blocked, "blocked-backup-directory");
           boolean refused = false;
           try { manager.applyExchange(current, revision, plan.getState()); } catch (Exception expected) { refused = true; }
           check(refused && BookmarkExchange.toJson(current, null).equals(BookmarkExchange.toJson(manager.captureForExchange(), null)), "backup failure prevents any live import mutation");
           Files.delete(blocked);
+          if (Files.exists(earlierBackups)) Files.move(earlierBackups, blocked);
           var backup = manager.applyExchange(current, revision, plan.getState());
           check(Files.isRegularFile(backup) && BookmarkExchange.toJson(current, filePath.getParent()).equals(Files.readString(backup)), "import saves complete portable backup before modifying the live model");
           WriteCommandAction.runWriteCommandAction(project, () -> document.setText("旧编辑页不能覆盖导入结果"));
@@ -232,6 +236,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         check("预览期间修改".equals(manager.getGroupById("ai-root").getName()), "rejected stale preview retains current state");
         manager.getGroupById("ai-root").setName("AI 根组");
       });
+      edt(() -> BookmarkWorkflowsSmoke.prepareRestart(project, manager));
       com.intellij.configurationStore.StoreUtil.saveSettings(project, true);
       Path persisted = root.resolve("project/.idea/bookmarks.xml");
       await(() -> Files.isRegularFile(persisted), "new state saved to project bookmarks.xml");
@@ -660,6 +665,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_Z) != null, "fresh IDE restores normalized project state from disk");
     edt(() -> {
       check(manager.getGroups(manager.getBookmark(BookmarkType.LETTER_Z)).size() == 2, "fresh IDE preserves two canonical references");
+      BookmarkWorkflowsSmoke.verifyRestart(project, manager);
       check(manager.getParentGroup(manager.getGroupById("ai-child")) == manager.getGroupById("ai-root"), "fresh IDE preserves project group hierarchy");
       check(WorkingContextManager.getInstance(project).loadContext("__branch_context_validation-a"), "fresh IDE reads AI-edited original branch archive");
     });

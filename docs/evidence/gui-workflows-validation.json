@@ -1,0 +1,47 @@
+{
+  "pluginVersion": "262.11879.100.9",
+  "sdkVersion": "2026.2.4",
+  "sdkBuild": "262.11879.100",
+  "date": "2026-11-08",
+  "archiveSha256": "06d3da1285c422834bd34a93efd587e6acc79ab9996fb6529a1424d88445c294",
+  "installation": "isolated build/workflows-ui; official installation and user projects untouched",
+  "checks": {
+    "healthReportsExactWhitespaceMismatchAndMissingFile": true,
+    "candidatePreviewRetainsTabsAndTrailingSpaces": true,
+    "confirmedLineRepairRetainsDescriptionAndSharedReferences": true,
+    "repairedBookmarkNavigatesTo": "ReadFixture.java:3:1",
+    "manualFileRepairPreservesBookmarkId": true,
+    "invalidCountBeforeAndAfter": [
+      2,
+      1,
+      0
+    ],
+    "repairCreatesBackups": true,
+    "filtersCombineFullTextGroupDirectoryHealthAndKind": true,
+    "savedViewReappliesAfterClear": true,
+    "savedViewRestoredAfterIdeRestart": true,
+    "currentFileOnlyMatchesThreeOfFourRecords": true,
+    "currentFileAndMissingDescriptionMatchesOneRecord": true,
+    "routeDeduplicatesSharedBookmarks": true,
+    "routeShowsMarkdownDescription": true,
+    "routeMarkReadAndCustomReorder": true,
+    "routeNextNavigatesTo": "ReadFixture.java:2:1",
+    "invalidRouteStepDisplaysHintWithoutNavigation": true,
+    "routeOrderAndProgressRestoredAfterIdeRestart": true,
+    "routeOrderAfterRestart": [
+      "route-bad",
+      "route-first"
+    ],
+    "completedAfterRestart": [
+      "route-first"
+    ],
+    "currentAfterRestart": "route-first",
+    "canonicalIdsDescriptionsAndMembershipsPreserved": true,
+    "fourInstalledJarsMatchZip": true,
+    "sourceFixtureBytesUnchanged": true,
+    "finalTwoGuiRunsErrorOrSevereLines": 0,
+    "allGuiInstancesExitedNormally": true,
+    "finalBuildReloadedAndInspectionHealthy": true
+  },
+  "boundaries": "GUI exercised an isolated local Java/text fixture and persistent personal state; branch progress restore is additionally verified in the native runtime harness. One initial cold startup logged TransactionGuard write-unsafe errors while Bookmarks opened during indexing; the origin was not established. This did not recur in the subsequent three GUI runs, whose logs contain no ERROR/SEVERE lines. Final ZIP was reloaded and checked healthy. No business sources or existing user bookmarks changed. No tag or Release created."
+}
