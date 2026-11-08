@@ -132,8 +132,12 @@ sequenceDiagram
 | `modules/core/src/com/intellij/ide/bookmark/BookmarkStorageFormat.kt` | 归一化、解析、严格校验和旧状态备份 |
 | `modules/core/src/com/intellij/ide/bookmark/BookmarksManagerImpl.kt` | 稳定 ID、异步恢复、迁移与持久化 |
 | `modules/core/src/com/intellij/ide/bookmark/context/BookmarkContextProvider.kt` | 复用原平台上下文协议的升级适配器 |
+| `modules/core/src/com/intellij/ide/bookmark/BookmarkWorkspaceStore.kt` | workspace.xml 中的阅读路线和保存视图；阅读状态另随原上下文保存 |
+| `modules/core/src/com/intellij/ide/bookmark/BookmarkHealth.kt` | 只读巡检、候选定位及保留稳定 ID 的带备份修复 |
 | `tools/bookmarks_store.py` | AI 的 JSON 导出、校验、原子写入和归档编辑 |
 | `tests/test_bookmarks_store.py` | 修改范围、并发版本、备份和归档隔离检查 |
 | `tests/runtime/BookmarkSmokeStarter.java` | 原版上下文链路及实际 IDE 序列化验证 |
 
 原平台链路见固定上游版本的 [BranchContextTracker](https://github.com/JetBrains/intellij-community/blob/idea/262.11879.100/platform/tasks-platform-impl/src/com/intellij/tasks/context/BranchContextTracker.java)、[WorkingContextManager](https://github.com/JetBrains/intellij-community/blob/idea/262.11879.100/platform/tasks-platform-impl/src/com/intellij/tasks/context/WorkingContextManager.java) 和本工程保留的 [原书签适配器](../official/platform/tasks-platform-impl/tasks.impl.bookmarks/src/BookmarkContextProvider.java)。AI 操作方法见 [AI 整理指南](AI_BOOKMARKS.md)。
+
+从 `.9` 开始，项目个人组件 `BookmarksWorkspace` 在 `workspace.xml` 保存视图条件及阅读路线。启用随分支恢复时，上下文中的 `bookmarks` 元素还会保存 `BookmarkReadingState`，与 `ManagerState` 并列；旧上下文缺少该元素时恢复为空进度。保存视图保持项目范围，不随分支覆盖。上述状态不扩展格式 2、不进入书签 JSON，详细边界见 [工作流说明](WORKFLOWS.md)。

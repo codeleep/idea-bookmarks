@@ -164,6 +164,9 @@
       </group>
 
       <group id="Bookmarks.ToolWindow.PopupMenu">
+        <action id="Bookmarks.Inspect" class="com.intellij.ide.bookmark.actions.InspectBookmarksAction" icon="AllIcons.Actions.Checked"/>
+        <action id="Bookmarks.ReadingRoute" class="com.intellij.ide.bookmark.actions.ReadBookmarkRouteAction" icon="AllIcons.Actions.NextOccurence"/>
+        <separator/>
         <reference ref="Bookmarks.Exchange"/>
         <separator/>
         <reference ref="ManageBookmarkGroups"/>
@@ -197,6 +200,8 @@
         <action id="BookmarksView.Create" icon="AllIcons.Actions.AddList" use-shortcut-of="NewElement"
                 class="com.intellij.ide.bookmark.actions.GroupCreateAction"/>
         <action id="Bookmarks.Search" icon="AllIcons.Actions.Search" class="com.intellij.ide.bookmark.actions.SearchBookmarksAction"/>
+        <reference ref="Bookmarks.Inspect"/>
+        <reference ref="Bookmarks.ReadingRoute"/>
         <reference ref="BookmarksView.Rename"/>
         <reference ref="BookmarksView.CreateSubgroup"/>
         <separator/>
