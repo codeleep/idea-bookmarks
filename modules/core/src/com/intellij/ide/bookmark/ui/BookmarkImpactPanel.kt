@@ -140,6 +140,7 @@ class BookmarkImpactPanel(private val project: Project, private val manager: Boo
 
   override fun dispose() = Unit
   internal fun toolWindowMenu() = JPopupMenu().apply {
+    add(com.intellij.ide.bookmark.actions.BookmarkSourceMenus.menu(project, list.selectedValuesList.singleOrNull()?.id))
     add(BookmarkWorkbenchUi.item(open)); addSeparator(); add(BookmarkWorkbenchUi.item(clear))
   }
   init {

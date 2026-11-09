@@ -203,10 +203,13 @@ public final class BookmarkWorkbenchSmoke {
   }
   public static void prepareReviewRestart(Project project, BookmarksManagerImpl manager) {
     var store=BookmarkWorkspaceStore.getInstance(project);var state=manager.captureForExchange();store.markReviewed(state,captures(project,state),store.reviewRevision());
+    var previous=store.route(state,"ai-root").getNotes().stream().filter(n->n.getBookmarkId().equals("ai-stable-bookmark")).findFirst().map(BookmarkRouteNote::getMarkdown).orElse("");
+    store.saveRouteNote(state,store.contextRevision(),"ai-root","ai-stable-bookmark",previous,"# 跨进程本站说明\n\n源码与测试依据。");
   }
   public static void verifyRestart(Project project, BookmarksManagerImpl manager) {
     var state=manager.captureForExchange();var store=BookmarkWorkspaceStore.getInstance(project);
     check(state.getRelations().stream().anyMatch(e->e.getId().equals("restart-edge")&&e.getNote().equals("跨进程设计依据")),"actual project restart retains typed canonical relations");
     check(store.readingState().getReviews().size()==2&&store.readingState().getSources().size()==1,"actual project restart retains deduplicated private source baselines");
+    check(store.route(state,"ai-root").getNotes().stream().anyMatch(n->n.getBookmarkId().equals("ai-stable-bookmark")&&n.getMarkdown().contains("跨进程本站说明")),"actual project restart preserves route-specific Markdown explanations");
   }
 }

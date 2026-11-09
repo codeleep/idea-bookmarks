@@ -62,6 +62,12 @@
   </extensions>
 
   <actions resource-bundle="messages.ActionsBundle">
+    <group id="Bookmarks.SourceAnalysis" class="com.intellij.ide.bookmark.actions.BookmarkSourceActionsGroup" popup="true" text="源码分析"/>
+    <action id="Bookmarks.EditRouteNote" class="com.intellij.ide.bookmark.actions.EditBookmarkRouteNoteAction"/>
+    <action id="Bookmarks.AddSourceResults" class="com.intellij.ide.bookmark.actions.AddSourceResultsToBookmarksAction">
+      <add-to-group group-id="UsageView.Popup" anchor="last"/>
+      <add-to-group group-id="HierarchyPopupMenu.Common" anchor="last"/>
+    </action>
     <group id="Bookmarks" popup="true">
       <group id="Bookmarks.Exchange" popup="true" text="导入、导出与分享" icon="AllIcons.Actions.MenuSaveall">
         <action id="Bookmarks.ExportJson" class="com.intellij.ide.bookmark.actions.ExportBookmarksJsonAction"/>
@@ -208,6 +214,7 @@
       </group>
 
       <group id="Bookmarks.ToolWindow.MoreActions" text="书签操作" popup="false">
+        <reference ref="Bookmarks.SourceAnalysis"/>
         <reference ref="Bookmarks.Inspect"/>
         <reference ref="Bookmarks.Exchange"/>
         <separator text="分组与归属"/>

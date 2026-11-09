@@ -33,7 +33,11 @@ internal fun groupChoices(state: ManagerState): List<BookmarkChoice> {
 
 /** Docked reader reuses the existing route IDs, custom order and progress. */
 class BookmarkReadingPanel(private val project: Project, private val manager: BookmarksManagerImpl,
-                            private val initialGroup: String?) : JPanel(BorderLayout()), Disposable {
+                            private val initialGroup: String?) : JPanel(BorderLayout()), Disposable, com.intellij.openapi.actionSystem.UiDataProvider {
+  companion object {
+    @JvmField val PANEL = com.intellij.openapi.actionSystem.DataKey.create<BookmarkReadingPanel>("bookmarks.readingPanel")
+    @JvmField val BOOKMARK_ID = com.intellij.openapi.actionSystem.DataKey.create<String>("bookmarks.readingBookmarkId")
+  }
   private val store = BookmarkWorkspaceStore.getInstance(project)
   private val groups = ComboBox<BookmarkChoice>()
   private val list = JBList<String>()
@@ -49,12 +53,25 @@ class BookmarkReadingPanel(private val project: Project, private val manager: Bo
   private val reset = JButton("重置进度…")
   private var state: ManagerState? = null
   private var revision = -1L
+  private var contextEpoch = -1L
   private var route: BookmarkRoute? = null
   private var entries = emptyMap<String, BookmarkSearchIndex.Entry>()
   private var configuring = false
   private val alarm = SingleAlarm({ refresh() }, 100, this, ModalityState.any())
 
   override fun dispose() = Unit
+
+  override fun uiDataSnapshot(sink: com.intellij.openapi.actionSystem.DataSink) {
+    sink[PANEL] = this
+    sink[BOOKMARK_ID] = list.selectedValue
+    sink[com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT] = project
+  }
+
+  fun editCurrentNote() {
+    val snapshot = state; val group = currentGroup(); val id = list.selectedValue
+    if (snapshot != null && group != null && id != null && save() &&
+        BookmarkRouteNoteDialog(project, manager, snapshot, group, id).showAndGet()) refresh()
+  }
 
   fun selectGroup(id: String?) {
     refresh()
@@ -85,7 +102,7 @@ class BookmarkReadingPanel(private val project: Project, private val manager: Bo
       groups.model = DefaultComboBoxModel(choices.toTypedArray())
       choices.indexOfFirst { it.id == selected }.takeIf { it >= 0 }?.let { groups.selectedIndex = it }
     }
-    state = snapshot; revision = manager.stateModificationCount
+    state = snapshot; revision = manager.stateModificationCount; contextEpoch = store.contextRevision()
     entries = BookmarkSearchIndex.fromState(snapshot, project.basePath).entries.associateBy { it.id }
     route = currentGroup()?.let { store.route(snapshot, it) }
     renderRoute()
@@ -101,7 +118,8 @@ class BookmarkReadingPanel(private val project: Project, private val manager: Bo
       save()
     }
     val record = state?.bookmarks?.firstOrNull { it.id == selected }
-    description.text = MarkdownDescriptions.toHtml(record?.description.orEmpty())
+    val note = current?.notes?.firstOrNull { it.bookmarkId == selected }?.markdown.orEmpty()
+    description.text = MarkdownDescriptions.toHtml(record?.description.orEmpty() + if (note.isEmpty()) "" else "\n\n---\n\n## 本站说明\n\n$note")
     description.caretPosition = 0
     val position = if (selected == null) -1 else current?.order?.indexOf(selected) ?: -1
     progress.text = "已读 ${current?.completed?.size ?: 0} / ${current?.order?.size ?: 0} · 第 ${if (position < 0) 0 else position + 1} 站"
@@ -115,8 +133,8 @@ class BookmarkReadingPanel(private val project: Project, private val manager: Bo
 
   private fun save(): Boolean {
     val snapshot = state ?: return false; val current = route ?: return false
-    if (manager.isRestoringBookmarks() || revision != manager.stateModificationCount) { alarm.cancelAndRequest(); return false }
-    store.updateRoute(snapshot, current); return true
+    if (manager.isRestoringBookmarks() || revision != manager.stateModificationCount || contextEpoch != store.contextRevision()) { alarm.cancelAndRequest(); return false }
+    store.updateRouteProgress(snapshot, current, contextEpoch); return true
   }
 
   private fun step(delta: Int) {
@@ -133,6 +151,11 @@ class BookmarkReadingPanel(private val project: Project, private val manager: Bo
 
   internal fun toolWindowMenu() = JPopupMenu().apply {
     add(BookmarkWorkbenchUi.item(open)); add(BookmarkWorkbenchUi.item(reorder))
+    add(com.intellij.ide.bookmark.actions.BookmarkSourceMenus.menu(project, list.selectedValue))
+    add(JMenuItem("编辑本站说明…").apply {
+      isEnabled = list.selectedValue != null && !manager.isRestoringBookmarks()
+      addActionListener { editCurrentNote() }
+    })
     addSeparator()
     add(JMenuItem("查看变更影响").apply {
       isEnabled = list.selectedValue != null

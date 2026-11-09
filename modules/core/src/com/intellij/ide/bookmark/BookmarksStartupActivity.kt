@@ -16,5 +16,8 @@ internal class BookmarksStartupActivity : ProjectActivity {
 
   override suspend fun execute(project: Project) {
     project.serviceAsync<BookmarksManager>()
+    ApplicationManager.getApplication().invokeLater {
+      if (!project.isDisposed) com.intellij.ide.bookmark.actions.BookmarkSourceMenus.installNativeMenus()
+    }
   }
 }

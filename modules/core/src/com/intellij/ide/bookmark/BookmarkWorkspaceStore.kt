@@ -31,6 +31,12 @@ class BookmarkRoute {
   var currentId: String = ""
   @get:XCollection val order: MutableList<String> = mutableListOf()
   @get:XCollection val completed: MutableList<String> = mutableListOf()
+  @get:XCollection val notes: MutableList<BookmarkRouteNote> = mutableListOf()
+}
+
+class BookmarkRouteNote {
+  var bookmarkId: String = ""
+  var markdown: String = ""
 }
 
 class BookmarkReadingState {
@@ -62,10 +68,12 @@ class BookmarkWorkspaceData {
 class BookmarkWorkspaceStore(private val project: Project) : PersistentStateComponent<BookmarkWorkspaceData> {
   private var data = BookmarkWorkspaceData()
   private var reviewRevision = 0L
+  private var contextRevision = 0L
+  @Synchronized fun contextRevision(): Long = contextRevision
   @Synchronized override fun getState(): BookmarkWorkspaceData = copy(data)
-  @Synchronized override fun loadState(state: BookmarkWorkspaceData) { data = copy(state); reviewRevision++ }
+  @Synchronized override fun loadState(state: BookmarkWorkspaceData) { data = copy(state); reviewRevision++; contextRevision++ }
   @Synchronized fun readingState(): BookmarkReadingState = copy(data.reading)
-  @Synchronized fun restoreReading(state: BookmarkReadingState) { data.reading = copy(state); reviewRevision++ }
+  @Synchronized fun restoreReading(state: BookmarkReadingState) { data.reading = copy(state); reviewRevision++; contextRevision++ }
   @Synchronized fun reviewRevision(): Long = reviewRevision
 
   @Synchronized fun markReviewed(state: ManagerState, captures: List<BookmarkImpact.Capture>, expectedRevision: Long) {
@@ -119,6 +127,8 @@ class BookmarkWorkspaceStore(private val project: Project) : PersistentStateComp
     val completed = route.completed.distinct().filter { it in ids }
     route.order.clear(); route.order.addAll(order); ids.forEach { if (it !in route.order) route.order.add(it) }
     route.completed.clear(); route.completed.addAll(completed)
+    val notes = route.notes.filter { it.bookmarkId in ids }.distinctBy { it.bookmarkId }
+    route.notes.clear(); route.notes.addAll(notes)
     if (route.currentId !in ids) route.currentId = route.order.firstOrNull().orEmpty()
     return copy(route)
   }
@@ -128,6 +138,8 @@ class BookmarkWorkspaceStore(private val project: Project) : PersistentStateComp
     require(proposed.order.size == ids.size && proposed.order.toSet() == ids.toSet()) { "路线已变化，请刷新后重试" }
     require(proposed.completed.distinct().size == proposed.completed.size && proposed.completed.all { it in ids }) { "阅读进度引用了无效书签" }
     require(proposed.currentId.isEmpty() || proposed.currentId in ids) { "当前阅读位置无效" }
+    require(proposed.notes.map { it.bookmarkId }.distinct().size == proposed.notes.size &&
+      proposed.notes.all { it.bookmarkId in ids && it.markdown.length <= 50000 }) { "本站说明引用无效书签或超过 50000 字符" }
     data.reading.routes.removeIf { it.groupId == proposed.groupId }
     data.reading.routes.add(copy(proposed))
   }
@@ -138,6 +150,28 @@ class BookmarkWorkspaceStore(private val project: Project) : PersistentStateComp
     require(order.size == ids.size && order.toSet() == ids.toSet()) { "路线已变化，请重新调整顺序" }
     val current = route(state, groupId)
     current.order.clear(); current.order.addAll(order)
+    updateRoute(state, current)
+  }
+
+  @Synchronized fun updateRouteProgress(state: ManagerState, proposed: BookmarkRoute, epoch: Long) {
+    check(epoch == contextRevision) { "阅读分支已变化，请刷新后重试" }
+    val updated = copy(proposed)
+    val latest = route(state, proposed.groupId)
+    updated.notes.clear(); updated.notes.addAll(latest.notes)
+    updated.order.clear(); updated.order.addAll(latest.order)
+    updateRoute(state, updated)
+  }
+
+  /** Save only this step; concurrent progress and other route notes remain current. */
+  @Synchronized fun saveRouteNote(state: ManagerState, epoch: Long, groupId: String, id: String, before: String, markdown: String) {
+    val manager = BookmarksManager.getInstance(project) as? BookmarksManagerImpl ?: error("书签服务不可用")
+    check(epoch == contextRevision && !manager.isRestoringBookmarks() &&
+      BookmarkExchange.toJson(manager.captureForExchange(), null) == BookmarkExchange.toJson(state, null)) { "书签或分支已变化，请重新编辑本站说明" }
+    val current = route(state, groupId)
+    require(id in current.order && markdown.length <= 50000) { "本站书签已移除或说明超过 50000 字符" }
+    check(current.notes.firstOrNull { it.bookmarkId == id }?.markdown.orEmpty() == before) { "本站说明已被其他窗口修改，请重新打开" }
+    current.notes.removeIf { it.bookmarkId == id }
+    if (markdown.isNotEmpty()) current.notes.add(BookmarkRouteNote().also { it.bookmarkId = id; it.markdown = markdown })
     updateRoute(state, current)
   }
 

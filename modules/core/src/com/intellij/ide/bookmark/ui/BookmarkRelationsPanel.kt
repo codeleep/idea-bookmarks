@@ -92,6 +92,7 @@ class BookmarkRelationsPanel(private val project: Project, private val manager: 
   }
   override fun dispose() = Unit
   internal fun toolWindowMenu() = JPopupMenu().apply {
+    add(com.intellij.ide.bookmark.actions.BookmarkSourceMenus.menu(project, sources.selectedValue?.id))
     add(BookmarkWorkbenchUi.item(edit)); add(BookmarkWorkbenchUi.item(delete))
     addSeparator(); add(BookmarkWorkbenchUi.item(target)); add(BookmarkWorkbenchUi.item(copyLink))
   }

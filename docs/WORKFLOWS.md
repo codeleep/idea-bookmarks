@@ -2,7 +2,7 @@
 
 ## 1. 入口与范围
 
-本说明对应插件 `262.11879.100.11`，适用于官方 IDEA `2026.2.4 / 262.11879.100`。
+本说明对应插件 `262.11879.100.12`，适用于官方 IDEA `2026.2.4 / 262.11879.100`。
 
 Bookmarks 工具栏固定显示新增列表、搜索、阅读工作台和编辑。巡检、导入导出、分组管理与列表显示并入工具窗口右上角原生三个点“⋮”菜单，原右键菜单和 Find Action 入口保留。阅读工作台也复用原生“⋮”菜单，并根据当前页签显示对应管理操作；内容区不再新增“更多”按钮，底部仅放常用操作。
 
@@ -48,6 +48,8 @@ Bookmarks 工具栏固定显示新增列表、搜索、阅读工作台和编辑�
 分组改名后沿用同一条路线。移除的书签会在刷新时从路线和进度中排除，新加入的书签追加到末尾；其他步骤的顺序及进度保留。无法定位的步骤仍显示，可通过巡检修复。
 
 阅读路线在 `workspace.xml` 的 `BookmarksWorkspace` 组件保存。启用原有随分支恢复选项时，`BookmarkContextProvider` 将 `BookmarkReadingState` 一并交给官方任务上下文存档；切换分支恢复对应路线顺序、当前步骤和已读标记。旧存档没有该元素时，恢复为空阅读进度。关闭随分支恢复后，路线随当前共用书签状态使用。
+
+阅读路线的原生“⋮”菜单新增“源码分析”和“编辑本站说明…”。本站说明使用 IDEA 编辑组件与 Markdown 文件类型，仅属于当前分组路线中的这一步，支持记录阅读问题、下一站理由、源码／测试依据和待确认项，不改变书签的共享描述。取消不写回；保存后随原分支阅读状态恢复。一次最多 50000 字符；删除路线中的书签后清理相应说明。
 
 ## 4. 高级筛选与保存视图
 
@@ -115,7 +117,7 @@ Bookmarks 工具栏固定显示新增列表、搜索、阅读工作台和编辑�
 |---|---|---|
 | 书签、描述、分组引用、关联 | `.idea/bookmarks.xml`，格式 3 | JSON 完整导出，Markdown 含关系摘要 |
 | 保存视图 | `.idea/workspace.xml` 的 `BookmarksWorkspace` | 项目个人配置，不进入书签 JSON |
-| 路线顺序、进度与源码复核基线 | 同一个人组件的 `reading` | 随分支上下文额外保存 `BookmarkReadingState`，不进入书签 JSON |
+| 路线顺序、进度、本站说明与源码复核基线 | 同一个人组件的 `reading` | 随分支上下文额外保存 `BookmarkReadingState`，不进入书签 JSON |
 | 修复前备份 | `.idea/bookmarks-import-backups/` | 完整可移植书签 JSON，可通过现有导入恢复 |
 
 `.10` 读取格式 2 并升级为 3；首次迁移保存 `.idea/bookmarks-format2-backup.xml`，保留原 ID、引用和描述。离线 AI 工具同步支持格式 2、3，维护书签、分组引用与关联，保留 `_source` 并遵守关闭项目、重新导出、备份及原子写回规则。编辑分支存档时应保留 `ManagerState` 之外的其他元素，包括新增的 `BookmarkReadingState`。
@@ -133,3 +135,5 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 python3 tools/runtime_smoke.py --idea-home "$BOOKMARKS_IDEA_HOME"
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
+
+源码分析与原生查询结果收录的操作、已验证范围和类图条件见 [源码阅读与原生能力](SOURCE_READING.md)。

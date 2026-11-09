@@ -154,3 +154,5 @@ sequenceDiagram
 原平台链路见固定上游版本的 [BranchContextTracker](https://github.com/JetBrains/intellij-community/blob/idea/262.11879.100/platform/tasks-platform-impl/src/com/intellij/tasks/context/BranchContextTracker.java)、[WorkingContextManager](https://github.com/JetBrains/intellij-community/blob/idea/262.11879.100/platform/tasks-platform-impl/src/com/intellij/tasks/context/WorkingContextManager.java) 和本工程保留的 [原书签适配器](../official/platform/tasks-platform-impl/tasks.impl.bookmarks/src/BookmarkContextProvider.java)。AI 操作方法见 [AI 整理指南](AI_BOOKMARKS.md)。
 
 从 `.9` 开始，项目个人组件 `BookmarksWorkspace` 在 `workspace.xml` 保存视图条件及阅读路线。启用随分支恢复时，上下文中的 `bookmarks` 元素还会保存 `BookmarkReadingState`，与 `ManagerState` 并列；旧上下文缺少该元素时恢复为空进度。保存视图保持项目范围，不随分支覆盖。`.10` 在同一阅读状态中加入 `reviews` 和按哈希去重的完整源码 `sources`；它们只保存在个人配置及原分支上下文中，不进入书签 JSON 或 Markdown 分享。关联表则属于格式 3 的公开书签状态。详细边界见 [工作流说明](WORKFLOWS.md)。
+
+`.12` 为 `BookmarkRoute` 增加 `notes`，每项使用稳定 `bookmarkId` 和 `markdown` 保存本站说明。同一书签在不同分组路线中可有不同说明，公共描述仍只存一次。说明属于个人阅读状态，随 `BookmarkReadingState` 进入原分支上下文，不进入交换 JSON／Markdown；不升级公开格式 3。保存时检查书签快照、分支上下文代次及旧说明，进度和排序操作保留最新说明。旧阅读状态没有 `notes` 时按空集合读取。

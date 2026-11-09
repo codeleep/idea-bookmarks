@@ -77,13 +77,14 @@ def smoke(sdk, plugin_archive=None, anchors_only=False):
     with zipfile.ZipFile(archive) as package:
         package.extractall(sandbox / "plugins")
     classpath = [*sorted((sdk / "lib").rglob("*.jar")),
+                 *sorted((sdk / "plugins/java/lib").rglob("*.jar")),
                  sdk / "plugins/markdown/lib/intellij.markdown.jar",
                  *sorted((sandbox / "plugins/platform-bookmarks-plugin/lib").rglob("*.jar"))]
     args = ["-encoding", "UTF-8", "--release", "25", "-proc:none", "-classpath",
             os.pathsep.join(map(str, classpath)), "-d", str(sandbox / "helper-classes"),
             str(ROOT / "tests/runtime/AnchorSmokeStarter.java")]
     if not anchors_only:
-        args.extend(str(ROOT / "tests/runtime" / name) for name in ("BookmarkSmokeStarter.java", "BreakpointActionsSmoke.java", "BookmarkWorkflowsSmoke.java", "BookmarkWorkbenchSmoke.java"))
+        args.extend(str(ROOT / "tests/runtime" / name) for name in ("BookmarkSmokeStarter.java", "BreakpointActionsSmoke.java", "BookmarkWorkflowsSmoke.java", "BookmarkWorkbenchSmoke.java", "BookmarkSourceNavigationSmoke.java"))
     arguments = sandbox / "javac.args"
     arguments.write_text("\n".join(json.dumps(value, ensure_ascii=False) for value in args))
     subprocess.run([str(java_home / "bin/javac"), "@" + str(arguments)], check=True)
@@ -97,6 +98,7 @@ def smoke(sdk, plugin_archive=None, anchors_only=False):
         output.writestr("META-INF/plugin.xml", f"""<idea-plugin>
   <id>bookmarks.validation</id><name>Bookmarks validation</name><version>1</version><vendor>Local</vendor>
   <depends>com.intellij.modules.platform</depends><depends>intellij.bookmarks.plugin</depends>
+  <depends>com.intellij.java</depends>
   <extensions defaultExtensionNs="com.intellij"><appStarter id="bookmarks-source-smoke" implementation="bookmarks.validation.{starter}"/>{breakpoint_type}</extensions>
 </idea-plugin>""")
     system = {"Darwin": "macOS", "Linux": "Linux", "Windows": "Windows"}[platform.system()]
