@@ -38,7 +38,7 @@
 | `.github/workflows/build-plugin.yml` | 可手动运行的 GitHub Actions 构建与产物上传 |
 | `docs/CI.md` | 云端构建、下载、配置与复现说明 |
 | `docs/STORAGE.md` | 格式 3 关联、格式 2 迁移及原版 Git 分支上下文链路 |
-| `docs/AI_BOOKMARKS.md` | AI 整理分组、共享描述与指定分支历史的指南 |
+| `docs/AI_BOOKMARKS.md` | AI 整理分组、共享描述、路线本站说明、原生分析结果及分支历史的指南 |
 | `tools/bookmarks_store.py` | AI 可用的 JSON 导出、校验和带备份写回工具 |
 
 本次 ZIP 包含核心、调试器和 VCS 三个桌面模块。公开 API、Favorites 桥接、Java 包及原分支监听器、上下文归档由官方 SDK 提供，对应公开源码已保留。书签上下文适配器在本插件内升级，用于完整恢复新存储结构。`modules/core/src/rpc/` 以及 `official/` 中的 backend/frontend 源码保留供参考，当前桌面构建不包含 Remote Development。官方描述引用的 `intellij.platform.frontend.split.bookmarks` 在该标签的 Community 公开仓库中没有实现源码，因此没有伪造或以反编译代码补齐。
