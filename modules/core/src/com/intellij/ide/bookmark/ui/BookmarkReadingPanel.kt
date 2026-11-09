@@ -8,14 +8,14 @@ import javax.swing.event.DocumentEvent
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.Messages
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.components.JBList
 import com.intellij.util.SingleAlarm
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.Dimension
-import java.awt.FlowLayout
-import java.awt.GridLayout
+import java.awt.event.ActionEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.*
@@ -45,8 +45,8 @@ class BookmarkReadingPanel(private val project: Project, private val manager: Bo
   private val toggle = JButton("标为已读")
   private val previous = JButton("上一站")
   private val next = JButton("下一站")
-  private val moveUp = JButton("上移")
-  private val moveDown = JButton("下移")
+  private val reorder = JButton("调整顺序…")
+  private val reset = JButton("重置进度…")
   private var state: ManagerState? = null
   private var revision = -1L
   private var route: BookmarkRoute? = null
@@ -104,11 +104,12 @@ class BookmarkReadingPanel(private val project: Project, private val manager: Bo
     description.text = MarkdownDescriptions.toHtml(record?.description.orEmpty())
     description.caretPosition = 0
     val position = if (selected == null) -1 else current?.order?.indexOf(selected) ?: -1
-    progress.text = "已读 ${current?.completed?.size ?: 0} / ${current?.order?.size ?: 0}，当前第 ${if (position < 0) 0 else position + 1} 站"
+    progress.text = "已读 ${current?.completed?.size ?: 0} / ${current?.order?.size ?: 0} · 第 ${if (position < 0) 0 else position + 1} 站"
     toggle.text = if (selected in current?.completed.orEmpty()) "标为未读" else "标为已读"
     toggle.isEnabled = selected != null; previous.isEnabled = list.selectedIndex > 0
     next.isEnabled = list.selectedIndex >= 0 && list.selectedIndex < list.model.size - 1
-    moveUp.isEnabled = search.text.isBlank() && position > 0; moveDown.isEnabled = search.text.isBlank() && next.isEnabled
+    reorder.isEnabled = search.text.isBlank() && (current?.order?.size ?: 0) > 1
+    reset.isEnabled = current?.order?.isNotEmpty() == true
     open.setEnabled(selected != null && !manager.isRestoringBookmarks())
   }
 
@@ -116,14 +117,6 @@ class BookmarkReadingPanel(private val project: Project, private val manager: Bo
     val snapshot = state ?: return false; val current = route ?: return false
     if (manager.isRestoringBookmarks() || revision != manager.stateModificationCount) { alarm.cancelAndRequest(); return false }
     store.updateRoute(snapshot, current); return true
-  }
-
-  private fun move(delta: Int) {
-    val current = route ?: return; val from = list.selectedIndex; val to = from + delta
-    if (from !in current.order.indices || to !in current.order.indices) return
-    java.util.Collections.swap(current.order, from, to)
-    if (!save()) return
-    configuring = true; list.setListData(current.order.toTypedArray()); list.selectedIndex = to; configuring = false; selectionChanged()
   }
 
   private fun step(delta: Int) {
@@ -138,24 +131,30 @@ class BookmarkReadingPanel(private val project: Project, private val manager: Bo
     if (!BookmarkNavigation.locate(project, manager, id, currentGroup())) progress.text = "该书签无法跳转，请使用失效书签巡检；阅读进度已保留。"
   }
 
+  internal fun toolWindowMenu() = JPopupMenu().apply {
+    add(BookmarkWorkbenchUi.item(open)); add(BookmarkWorkbenchUi.item(reorder))
+    addSeparator()
+    add(JMenuItem("查看变更影响").apply {
+      isEnabled = list.selectedValue != null
+      addActionListener { BookmarkWorkbenchFactory.open(project, 1, currentGroup(), list.selectedValue) }
+    })
+    add(JMenuItem("查看关联").apply {
+      isEnabled = list.selectedValue != null
+      addActionListener { BookmarkWorkbenchFactory.open(project, 2, currentGroup(), list.selectedValue) }
+    })
+    addSeparator(); add(BookmarkWorkbenchUi.item(reset))
+  }
+
   private fun createPanel(): JComponent = JPanel(BorderLayout(0, JBUI.scale(8))).apply {
     minimumSize = Dimension(JBUI.scale(300), JBUI.scale(200))
     add(JPanel(BorderLayout(0, JBUI.scale(6))).apply {
-      add(JPanel(BorderLayout()).apply { add(groups, BorderLayout.CENTER); add(JButton("刷新").apply { addActionListener { refresh() } }, BorderLayout.EAST) }, BorderLayout.NORTH)
+      add(BookmarkWorkbenchUi.heading(groups, BookmarkWorkbenchUi.refreshButton { refresh() }), BorderLayout.NORTH)
       add(search, BorderLayout.SOUTH)
     }, BorderLayout.NORTH)
     add(JSplitPane(JSplitPane.VERTICAL_SPLIT, ScrollPaneFactory.createScrollPane(list), ScrollPaneFactory.createScrollPane(description)).apply { resizeWeight = 0.55 }, BorderLayout.CENTER)
     add(JPanel(BorderLayout()).apply {
       add(progress, BorderLayout.NORTH)
-      add(JPanel(GridLayout(0, 2, JBUI.scale(6), JBUI.scale(6))).apply {
-        add(open); add(previous); add(next); add(toggle); add(moveUp); add(moveDown)
-        add(JButton("查看变更影响").apply { addActionListener { BookmarkWorkbenchFactory.open(project, 1, currentGroup(), list.selectedValue) } })
-        add(JButton("查看关联").apply { addActionListener { BookmarkWorkbenchFactory.open(project, 2, currentGroup(), list.selectedValue) } })
-        add(JButton("重置进度").apply { addActionListener {
-          route?.let { it.completed.clear(); it.currentId = it.order.firstOrNull().orEmpty(); if (save()) refresh() }
-        } })
-      }, BorderLayout.CENTER)
-      add(JTextArea("包含子分组，共享书签只读一次。路线排序和进度随原分支上下文恢复。", 2, 20).apply { isEditable = false; isOpaque = false; lineWrap = true; wrapStyleWord = true }, BorderLayout.SOUTH)
+      add(BookmarkWorkbenchUi.actions(previous, next, toggle), BorderLayout.CENTER)
     }, BorderLayout.SOUTH)
   }
 
@@ -172,13 +171,26 @@ class BookmarkReadingPanel(private val project: Project, private val manager: Bo
     } })
     groups.addActionListener { if (!configuring) refresh() }
     previous.addActionListener { step(-1) }; next.addActionListener { step(1) }
-    moveUp.addActionListener { move(-1) }; moveDown.addActionListener { move(1) }
+    reorder.addActionListener {
+      val snapshot = state; val group = currentGroup()
+      if (snapshot != null && group != null && save() &&
+          BookmarkRouteOrderDialog(project, manager, snapshot, revision, group, list.selectedValue).showAndGet()) refresh()
+    }
+    reset.addActionListener {
+      if (Messages.showYesNoDialog(project, "重置这条路线的已读标记并返回首站？阅读顺序会保留。", "重置阅读进度", null) == Messages.YES) {
+        route?.let { it.completed.clear(); it.currentId = it.order.firstOrNull().orEmpty(); if (save()) refresh() }
+      }
+    }
     toggle.addActionListener {
       val id = list.selectedValue
       route?.let { if (id != null) { if (!it.completed.remove(id)) it.completed.add(id); if (save()) { list.repaint(); selectionChanged() } } }
     }
     listenToBookmarks(project, this) { alarm.cancelAndRequest() }
     open.addActionListener { openCurrent() }
+    list.toolTipText = "双击或按 Enter 打开代码；在工具窗口右上角三个点菜单中调整阅读顺序"
+    list.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke("ENTER"), "openBookmark")
+    list.actionMap.put("openBookmark", object : AbstractAction() { override fun actionPerformed(event: ActionEvent) { openCurrent() } })
+    search.toolTipText = "全文搜索这条路线中的书签"
     search.textEditor.document.addDocumentListener(object : DocumentAdapter() { override fun textChanged(event: DocumentEvent) { configuring = true; renderRoute(); configuring = false; selectionChanged() } })
     add(createPanel(), BorderLayout.CENTER); refresh()
   }

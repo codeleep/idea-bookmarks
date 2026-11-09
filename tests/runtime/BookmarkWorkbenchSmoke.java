@@ -14,6 +14,9 @@ import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.util.xmlb.XmlSerializer;
 import org.jdom.Element;
+import java.awt.Container;
+import java.util.stream.Stream;
+import javax.swing.JButton;
 import java.nio.file.*;
 import java.util.*;
 import java.util.function.BooleanSupplier;
@@ -39,6 +42,17 @@ public final class BookmarkWorkbenchSmoke {
   }
   private static String json(ManagerState state) { return BookmarkExchange.toJson(state, null); }
   private static List<BookmarkImpact.Capture> captures(Project project, ManagerState state) { return state.getBookmarks().stream().map(b -> BookmarkImpact.capture(project,b)).filter(Objects::nonNull).toList(); }
+  private static List<JButton> buttons(Container parent) {
+    return Arrays.stream(parent.getComponents()).flatMap(c -> c instanceof Container nested ? Stream.concat(c instanceof JButton b ? Stream.of(b) : Stream.empty(), buttons(nested).stream()) : Stream.empty()).toList();
+  }
+  private static void layout(Container parent) {
+    parent.doLayout();for(var c:parent.getComponents())if(c instanceof Container nested)layout(nested);
+  }
+  private static void narrowPanel(Container panel,String name) {
+    panel.setSize(com.intellij.util.ui.JBUI.scale(340),com.intellij.util.ui.JBUI.scale(680));layout(panel);
+    var textButtons=buttons(panel).stream().filter(b->b.isVisible()&&b.getText()!=null&&!b.getText().isBlank()).toList();
+    check(textButtons.stream().allMatch(b->b.getWidth()>=b.getMinimumSize().width&&b.getHeight()>0),name+" primary buttons remain usable at 340 logical pixels");
+  }
 
   public static void verify(Project project, BookmarksManagerImpl manager) throws Exception {
     var original=manager.captureForExchange(); var store=BookmarkWorkspaceStore.getInstance(project); var workspace=store.getState();
@@ -112,6 +126,11 @@ public final class BookmarkWorkbenchSmoke {
         var expectedRevision=store.reviewRevision();store.markReviewed(snapshot,captures(project,snapshot),expectedRevision);
         reject(() -> store.clearReviews(Set.of("a"),expectedRevision),"stale baseline revisions cannot overwrite a newer review");
         var route=store.route(snapshot,"wb-root");route.getCompleted().add("a");store.updateRoute(snapshot,route);
+        route.setCurrentId("b");store.updateRoute(snapshot,route);var unchanged=json(manager.captureForExchange());
+        store.reorderRoute(snapshot,"wb-root",List.of("b","a"));var reordered=store.route(snapshot,"wb-root");
+        check(reordered.getOrder().equals(List.of("b","a"))&&reordered.getCurrentId().equals("b")&&reordered.getCompleted().equals(List.of("a")),"route order changes retain current step and latest completed progress");
+        reject(()->store.reorderRoute(snapshot,"wb-root",List.of("a","a")),"route order rejects duplicate or missing steps before writing");
+        check(store.route(snapshot,"wb-root").getOrder().equals(List.of("b","a"))&&json(manager.captureForExchange()).equals(unchanged),"invalid order edits preserve prior route and all canonical bookmarks");
         store.clearReviews(Set.of("a"),store.reviewRevision());
         check(store.readingState().getSources().size()==1&&store.readingState().getRoutes().getFirst().getCompleted().contains("a"),"clearing one review keeps shared source snapshots and reading progress");
         store.clearReviews(Set.of("b"),store.reviewRevision());
@@ -133,9 +152,22 @@ public final class BookmarkWorkbenchSmoke {
       edt(() -> {
         check(BookmarkImpact.inspect(project,manager.captureForExchange(),store.readingState()).stream().anyMatch(e->e.getId().equals("a")&&e.getStatus()==BookmarkImpact.Status.MOVED),"review warns when the bookmark moves to another file with identical contents");
         var panel=new BookmarkWorkbenchPanel(project,manager);
-        try {check(panel.getReader().getParent()!=null&&panel.getImpact().getParent()!=null&&panel.getRelations().getParent()!=null,"native Swing workbench owns route impact and relation panels without floating dialogs");}
+        try {
+          check(panel.getReader().getParent()!=null&&panel.getImpact().getParent()!=null&&panel.getRelations().getParent()!=null,"native Swing workbench owns route impact and relation panels without floating dialogs");
+          narrowPanel(panel.getReader(),"reading route");narrowPanel(panel.getImpact(),"source review");narrowPanel(panel.getRelations(),"relations");
+          var readerButtons=buttons(panel.getReader()).stream().map(JButton::getText).filter(Objects::nonNull).toList();
+          check(readerButtons.containsAll(List.of("上一站","下一站"))&&readerButtons.stream().noneMatch(t->t.contains("上移")||t.contains("下移")||t.contains("重置")||t.contains("更多")),"reading navigation stays visible without ordering reset or extra More buttons");
+          var readerMenu=Arrays.stream(panel.menuActions()).map(a->a.getTemplatePresentation().getText()).toList();
+          panel.select(2,null,"b");var relationsMenu=Arrays.stream(panel.menuActions()).map(a->a.getTemplatePresentation().getText()).toList();
+          panel.select(1,null,"b");var impactMenu=Arrays.stream(panel.menuActions()).map(a->a.getTemplatePresentation().getText()).toList();
+          check(readerMenu.contains("调整顺序…")&&relationsMenu.contains("编辑关联…")&&!relationsMenu.contains("调整顺序…")&&impactMenu.contains("清除所选基线"),"native workbench extension actions follow the active page without mixing navigation and management");
+        }
         finally{Disposer.dispose(panel);}
         check(ActionManager.getInstance().getAction("Bookmarks.SourceImpact")!=null&&ActionManager.getInstance().getAction("Bookmarks.Relations")!=null,"workbench impact and relation actions register in the installed plugin");
+        var actions=ActionManager.getInstance();var primary=(com.intellij.openapi.actionSystem.ActionGroup)actions.getAction("Bookmarks.ToolWindow.TitleActions");
+        var more=(com.intellij.openapi.actionSystem.ActionGroup)actions.getAction("Bookmarks.ToolWindow.MoreActions");
+        var gear=(com.intellij.openapi.actionSystem.ActionGroup)actions.getAction("Bookmarks.ToolWindow.GearActions");
+        check(primary.getChildren(null).length==4&&Arrays.asList(gear.getChildren(null)).contains(more)&&!more.isPopup()&&Arrays.asList(more.getChildren(null)).containsAll(List.of(actions.getAction("Bookmarks.Exchange"),actions.getAction("Bookmarks.Inspect"),actions.getAction("ManageBookmarkGroups"))),"bookmark toolbar keeps four primary entries and places secondary actions in its native extension menu");
         var a=manager.getBookmarks().stream().filter(b->"a".equals(manager.getBookmarkId(b))).findFirst().get();
         manager.getGroupById("wb-root").remove(a);
         check(manager.captureForExchange().getRelations().size()==1,"removing one group reference preserves the shared bookmark relation");

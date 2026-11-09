@@ -26,8 +26,6 @@ import com.intellij.util.SingleAlarm
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
-import java.awt.FlowLayout
-import java.awt.GridLayout
 import javax.swing.*
 
 class BookmarkImpactPanel(private val project: Project, private val manager: BookmarksManagerImpl,
@@ -38,9 +36,10 @@ class BookmarkImpactPanel(private val project: Project, private val manager: Boo
   private val status = ComboBox(arrayOf("全部书签", "仅待复核", "未建立基线"))
   private val summary = JLabel()
   private val details = JTextArea().apply { isEditable = false; lineWrap = true }
-  private val review = JButton("建立／更新复核基线")
-  private val diff = JButton("查看源码差异")
+  private val review = JButton("建立基线")
+  private val diff = JButton("查看差异")
   private val clear = JButton("清除所选基线")
+  private val open = JButton("打开代码")
   private var state: ManagerState? = null
   private var reading = BookmarkReadingState()
   private var revision = -1L
@@ -82,7 +81,7 @@ class BookmarkImpactPanel(private val project: Project, private val manager: Boo
     } }
     list.setListData(shown.toTypedArray())
     if (shown.isNotEmpty()) list.selectedIndex = shown.indexOfFirst { it.id == preferred }.coerceAtLeast(0)
-    summary.text = "${entries.count { it.status in setOf(BookmarkImpact.Status.CHANGED, BookmarkImpact.Status.MOVED) }} 项待复核，${entries.count { it.status == BookmarkImpact.Status.UNREVIEWED }} 项未建立基线；显示 ${shown.size} 项"
+    summary.text = "待复核 ${entries.count { it.status in setOf(BookmarkImpact.Status.CHANGED, BookmarkImpact.Status.MOVED) }} · 未建基线 ${entries.count { it.status == BookmarkImpact.Status.UNREVIEWED }} · 显示 ${shown.size}"
     list.emptyText.text = "没有符合条件的书签"; selectionChanged()
   }
 
@@ -92,6 +91,8 @@ class BookmarkImpactPanel(private val project: Project, private val manager: Boo
     review.isEnabled = current() && selected.isNotEmpty() && selected.all { it.status !in setOf(BookmarkImpact.Status.MISSING, BookmarkImpact.Status.UNSUPPORTED, BookmarkImpact.Status.TOO_LARGE) }
     diff.isEnabled = current() && selected.size == 1 && reading.reviews.any { it.bookmarkId == selected.single().id }
     clear.isEnabled = current() && selected.any { entry -> reading.reviews.any { it.bookmarkId == entry.id } }
+    open.isEnabled = current() && selected.size == 1
+    review.text = if (selected.any { entry -> reading.reviews.any { it.bookmarkId == entry.id } }) "确认已复核" else "建立基线"
     details.text = selected.singleOrNull()?.let { entry ->
       val record = state?.bookmarks?.firstOrNull { it.id == entry.id }
       "${entry.status.label}\n${labels[entry.id]?.location.orEmpty()}\n书签 ID：${entry.id}\n${if (entry.descriptionChanged) "描述也已修改，请一并复核。" else ""}\n\n${record?.description.orEmpty()}"
@@ -138,20 +139,22 @@ class BookmarkImpactPanel(private val project: Project, private val manager: Boo
   }
 
   override fun dispose() = Unit
+  internal fun toolWindowMenu() = JPopupMenu().apply {
+    add(BookmarkWorkbenchUi.item(open)); addSeparator(); add(BookmarkWorkbenchUi.item(clear))
+  }
   init {
     border = JBUI.Borders.empty(6)
     add(JPanel(BorderLayout(0, JBUI.scale(6))).apply {
-      add(search, BorderLayout.NORTH)
-      add(JPanel(FlowLayout(FlowLayout.LEFT)).apply { add(status); add(JButton("重新检查").apply { addActionListener { refresh() } }) }, BorderLayout.CENTER)
+      add(BookmarkWorkbenchUi.heading(status, BookmarkWorkbenchUi.refreshButton { refresh() }), BorderLayout.NORTH)
+      add(search, BorderLayout.CENTER)
       add(summary, BorderLayout.SOUTH)
     }, BorderLayout.NORTH)
     add(JSplitPane(JSplitPane.VERTICAL_SPLIT, ScrollPaneFactory.createScrollPane(list), ScrollPaneFactory.createScrollPane(details)).apply { resizeWeight = 0.6 }, BorderLayout.CENTER)
-    add(JPanel(BorderLayout()).apply {
-      add(JPanel(GridLayout(0, 2, JBUI.scale(6), JBUI.scale(6))).apply { add(review); add(diff); add(clear)
-        add(JButton("打开代码").apply { addActionListener { list.selectedValue?.let { BookmarkNavigation.locate(project, manager, it.id) } } })
-      }, BorderLayout.CENTER)
-      add(JTextArea("按文件与已复核版本比较，支持多选。源码变化后复核描述，再更新基线。", 2, 20).apply { isEditable = false; isOpaque = false; lineWrap = true; wrapStyleWord = true }, BorderLayout.SOUTH)
-    }, BorderLayout.SOUTH)
+    add(BookmarkWorkbenchUi.actions(diff, review), BorderLayout.SOUTH)
+    review.toolTipText = "确认源码与描述后，为所选书签建立或更新复核基线；支持多选"
+    diff.toolTipText = "按完整文件对比已复核版本和当前编辑内容"
+    open.addActionListener { list.selectedValue?.let { BookmarkNavigation.locate(project, manager, it.id) } }
+    BookmarkWorkbenchUi.installMenu(list) { toolWindowMenu() }
     list.selectionMode = ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
     list.cellRenderer = DefaultListCellRenderer().let { renderer -> ListCellRenderer { component, entry, index, selected, focus ->
       renderer.getListCellRendererComponent(component, "${entry.status.label} · ${labels[entry.id]?.location.orEmpty()} ${labels[entry.id]?.snippet("").orEmpty()}", index, selected, focus)

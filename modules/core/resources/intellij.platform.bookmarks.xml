@@ -200,24 +200,32 @@
       </group>
 
       <group id="Bookmarks.ToolWindow.TitleActions">
-        <reference ref="Bookmarks.Exchange"/>
-        <reference ref="ManageBookmarkGroups"/>
         <action id="BookmarksView.Create" icon="AllIcons.Actions.AddList" use-shortcut-of="NewElement"
                 class="com.intellij.ide.bookmark.actions.GroupCreateAction"/>
         <action id="Bookmarks.Search" icon="AllIcons.Actions.Search" class="com.intellij.ide.bookmark.actions.SearchBookmarksAction"/>
-        <reference ref="Bookmarks.Inspect"/>
         <reference ref="Bookmarks.ReadingRoute"/>
         <reference ref="BookmarksView.Rename"/>
+      </group>
+
+      <group id="Bookmarks.ToolWindow.MoreActions" text="书签操作" popup="false">
+        <reference ref="Bookmarks.Inspect"/>
+        <reference ref="Bookmarks.Exchange"/>
+        <separator text="分组与归属"/>
+        <reference ref="ManageBookmarkGroups"/>
         <reference ref="BookmarksView.CreateSubgroup"/>
-        <separator/>
-        <reference ref="SelectInProjectView"/>
+        <reference ref="BookmarksView.MoveGroup"/>
+        <reference ref="BookmarksView.DefaultGroup"/>
+        <separator text="列表显示"/>
         <reference ref="ExpandAll"/>
         <reference ref="CollapseAll"/>
+        <reference ref="SelectInProjectView"/>
         <action id="BookmarksView.ShowPreview" icon="AllIcons.Actions.PreviewDetails"
                 class="com.intellij.ide.bookmark.actions.ShowPreviewToggleAction"/>
       </group>
 
       <group id="Bookmarks.ToolWindow.GearActions">
+        <reference ref="Bookmarks.ToolWindow.MoreActions"/>
+        <separator text="书签设置"/>
         <action id="BookmarksView.GroupLineBookmarks" icon="AllIcons.Actions.GroupByFile"
                 class="com.intellij.ide.bookmark.actions.GroupLineBookmarksToggleAction"/>
         <action id="BookmarksView.RewriteBookmarkType"
