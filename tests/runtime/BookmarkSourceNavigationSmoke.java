@@ -24,7 +24,8 @@ import java.util.concurrent.atomic.AtomicReference;
 /** Native indexed project, real Find adapters, and the installed plugin's transactional writer. */
 public final class BookmarkSourceNavigationSmoke {
   private static final class RecreatedProvider implements BookmarkProvider {
-    private final Project project;int calls;
+    private final Project project;int calls;volatile boolean cancelNext;
+    volatile java.util.concurrent.CountDownLatch retryEntered,releaseRetry;
     RecreatedProvider(Project project){this.project=project;}
     public Project getProject(){return project;}
     public int getWeight(){return 0;}
@@ -32,6 +33,14 @@ public final class BookmarkSourceNavigationSmoke {
     public Bookmark createBookmark(Object context){return null;}
     public Bookmark createBookmark(Map<String,String> attributes){
       calls++;
+      if(cancelNext){cancelNext=false;throw new com.intellij.openapi.progress.ProcessCanceledException();}
+      var retry=retryEntered;
+      if(retry!=null){
+        retry.countDown();
+        try{if(!releaseRetry.await(10,java.util.concurrent.TimeUnit.SECONDS))throw new AssertionError("Retry was not released");}
+        catch(InterruptedException error){Thread.currentThread().interrupt();throw new RuntimeException(error);}
+        retryEntered=null;
+      }
       return new Bookmark(){
         public BookmarkProvider getProvider(){return RecreatedProvider.this;}
         public Map<String,String> getAttributes(){return Map.copyOf(attributes);}
@@ -114,6 +123,16 @@ public final class BookmarkSourceNavigationSmoke {
         check(recreated.calls==1&&"canonical-provider-bookmark".equals(manager.getBookmarkId(manager.getBookmarks().getFirst())),"one canonical ID resolves once while retaining its stable identity");
         edt(()->manager.loadState(shared));restored(manager);
         check(recreated.calls==2&&manager.getBookmarks().size()==1&&manager.getGroups(manager.getBookmarks().getFirst()).size()==2,"a later restore resolves the canonical bookmark again without reusing a previous context cache");
+        recreated.retryEntered=new java.util.concurrent.CountDownLatch(1);recreated.releaseRetry=new java.util.concurrent.CountDownLatch(1);recreated.cancelNext=true;
+        edt(()->manager.loadState(shared));
+        try {
+          if(!recreated.retryEntered.await(10,java.util.concurrent.TimeUnit.SECONDS))throw new AssertionError("Native invoker did not retry a cancelled restore");
+          check(manager.isRestoringBookmarks(),"a cancelled native attempt keeps restoration guarded until its retry finishes");
+          check(BookmarkExchange.toJson(manager.getState(),null).equals(BookmarkExchange.toJson(shared,null)),"persistence retains the complete input snapshot while a native retry is pending");
+          reject(()->manager.captureForExchange(),"exchange capture stays blocked during a pending native retry");
+        } finally {recreated.releaseRetry.countDown();}
+        restored(manager);
+        check(manager.getBookmarks().size()==1&&manager.getGroups(manager.getBookmarks().getFirst()).size()==2,"native cancellation retry restores one canonical bookmark with both references");
       } finally {
         edt(()->manager.loadState(original));restored(manager);com.intellij.openapi.util.Disposer.dispose(lifetime);
       }
@@ -153,7 +172,8 @@ public final class BookmarkSourceNavigationSmoke {
       String before=json(manager);var stale=manager.captureForExchange();long revision=manager.getStateModificationCount();
       edt(()->manager.getGroup("研究入口").setName("研究入口已改名"));
       edt(()->reject(()->BookmarkSourceNavigation.add(project,manager,stale,revision,List.of(usagePoint.get()),target,null),"a stale source-result dialog cannot overwrite newer bookmark changes"));
-      var client=LocalFileSystem.getInstance().findFileByNioFile(path.resolve("src/Client.java"));var document=FileDocumentManager.getInstance().getDocument(client);
+      var client=LocalFileSystem.getInstance().findFileByNioFile(path.resolve("src/Client.java"));
+      var document=com.intellij.openapi.application.ReadAction.compute(()->FileDocumentManager.getInstance().getDocument(client));
       edt(()->WriteCommandAction.runWriteCommandAction(project,()->document.insertString(0,"// 源码变化\n")));
       var unchanged=json(manager);
       edt(()->reject(()->BookmarkSourceNavigation.add(project,manager,manager.captureForExchange(),manager.getStateModificationCount(),List.of(usagePoint.get()),target,null),"source changed after preview is rejected before any bookmark mutation"));

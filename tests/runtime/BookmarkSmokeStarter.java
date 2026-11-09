@@ -241,6 +241,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         check("预览期间修改".equals(manager.getGroupById("ai-root").getName()), "rejected stale preview retains current state");
         manager.getGroupById("ai-root").setName("AI 根组");
       });
+      sharedImportCycles(40);
       edt(() -> BookmarkWorkflowsSmoke.prepareRestart(project, manager));
       edt(() -> BookmarkWorkbenchSmoke.prepareRestart(project, manager, file));
       await(() -> !manager.isRestoringBookmarks(), "relation fixture restoration completes before saving the project");
@@ -666,8 +667,8 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
   }
 
   private static void verifyAiArchiveAfterRestart(Path root, Path filePath) throws Exception {
+    project = ProjectManagerEx.getInstanceEx().loadProject(filePath.getParent());
     edt(() -> {
-      project = ProjectManagerEx.getInstanceEx().loadProject(filePath.getParent());
       manager = (BookmarksManagerImpl)BookmarksManager.getInstance(project);
     });
     await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_Z) != null, "fresh IDE restores normalized project state from disk");
@@ -694,6 +695,29 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     Files.writeString(root.resolve("second-process-result.txt"), "PASS: project reopen and AI-edited branch archive\n");
     System.out.println("BOOKMARKS_RESTART_SMOKE_PASS");
     System.exit(0);
+  }
+
+  private static void sharedImportCycles(int count) throws Exception {
+    for (int cycle=0;cycle<count;cycle++) {
+      String description=cycle==count-1?"# 导入的共享描述\n\n**中文** & <tag>\n":"# 连续导入 "+cycle+"\n\n共享说明";
+      edt(() -> {
+        var expected=manager.captureForExchange();var bookmark=manager.getBookmark(BookmarkType.LETTER_Z);
+        var old=FileDocumentManager.getInstance().getDocument(MarkdownDescriptionEditor.getInstance(project).getDescriptionFile(manager.getGroupById("ai-child"),bookmark));
+        var proposed=BookmarkExchange.copy(expected);
+        proposed.getBookmarks().stream().filter(b->"ai-stable-bookmark".equals(b.getId())).findFirst().orElseThrow().setDescription(description);
+        manager.applyExchange(expected,manager.getStateModificationCount(),proposed);
+        WriteCommandAction.runWriteCommandAction(project,()->old.setText("过期编辑页"));
+      });
+      long end=System.nanoTime()+10_000_000_000L;
+      while(manager.isRestoringBookmarks()&&System.nanoTime()<end)Thread.sleep(20);
+      edt(()->{
+        var bookmark=manager.getBookmark(BookmarkType.LETTER_Z);
+        if(manager.isRestoringBookmarks()||bookmark==null||manager.getGroups(bookmark).size()!=2||
+          manager.getGroups(bookmark).stream().anyMatch(g->!description.equals(g.getDescription(bookmark))))
+          throw new AssertionError("Repeated import lost shared identity: "+BookmarkExchange.toJson(manager.captureForExchange(),null));
+      });
+    }
+    check(true,"forty consecutive native imports preserve both shared references and detach every stale description editor");
   }
 
   private static GroupState groupState(String id, String parentId, String name) {

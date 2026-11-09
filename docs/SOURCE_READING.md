@@ -113,3 +113,26 @@ flowchart LR
 | 自动化限制 | 原生标题栏扩展菜单的物理点击未完整捕获；菜单结构和页签范围有运行检查 |
 
 当前运行报告见 [runtime-validation.json](evidence/runtime-validation.json)，GUI 证据见 [gui-source-navigation-validation.json](evidence/gui-source-navigation-validation.json)。新功能不隐式创建 tag 或 Release。
+
+## 9. 双 SDK 与恢复取消回归
+
+2026-11-09 已完成以下隔离运行检查；正式安装包仍精确支持 `262.11879.100`。
+
+| SDK | 被测包 | 结果与边界 |
+| --- | --- | --- |
+| IDEA 2026.2.4 / 262.11879.100 | 正式构建的 `.12` 字节码与元数据 | 实测：432 项检查通过，包含真实进程重启与分支归档恢复 |
+| IDEA 2026.3 / 263.7307.200 | 相同的三个实现 JAR，加实验性元数据 | 实测：432 项检查通过；尚未独立验收已授权 Java 类图 GUI，不作为正式兼容声明 |
+
+263 的官方 Bookmarks 主 ID 改为 `com.intellij.bookmarks`，同时提供 `intellij.bookmarks.plugin` 旧别名。候选包使用新版主 ID、保留旧别名，并采用高于宿主内置版本的 `263.7307.200.1-compat` 测试版本。Tasks 和 VCS API 的测试编译路径也随新版独立插件目录补齐。只放宽 `until-build` 会发生 ID 冲突；继续使用 262 的版本号还会被较新的内置实现覆盖。
+
+`tools/compatibility_smoke.py` 在 `build/` 中准备候选副本，仅改元数据，并校验三个实现 JAR 与正式构建逐字节一致。它不修改正式描述符、IDEA 安装目录或日常 IDE 配置。复现命令如下。
+
+```bash
+python3 tools/build.py --idea-home ".cache/IntelliJ IDEA 2026.2.4.app"
+python3 tools/runtime_smoke.py --idea-home ".cache/IntelliJ IDEA 2026.2.4.app"
+python3 tools/compatibility_smoke.py --idea-home ".cache/IntelliJ IDEA 2026.3.app"
+```
+
+共享恢复回归包含两类反例：provider 每次创建不同对象时，旧实现会拆分同一 canonical ID；原生 Invoker 取消后重试时，旧实现会在尝试的 `finally` 中提前减掉恢复计数。新测试显式抛出 `ProcessCanceledException`，暂停第二次尝试，确认恢复保护保持启用、持久化仍返回完整输入快照、交换捕获被拒绝；释放后检查两组引用和稳定 ID，并再连续导入 40 次。
+
+修复使用最终 Promise 的 `onProcessed` 释放计数，规范化恢复按 ID 解析并一次性挂载引用。格式 0 的迁移逻辑和原生 provider 的严格锚点保护保留。证据见 [共享恢复对照](evidence/canonical-restore-validation.json)、[263 候选包报告](evidence/sdk-263-compatibility-validation.json) 及 [263 运行明细](evidence/runtime-validation-263-candidate.json)。原始日志和候选副本保留在本机忽略的 `build/` 下，便于继续复核；不进入正式源码归档或 Release。

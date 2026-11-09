@@ -1,0 +1,19 @@
+{
+  "sdkVersion": "2026.3",
+  "sdkBuild": "263.7307.200",
+  "baseArchiveSha256": "e13a09757ead2d3fca4b8a432f28293e76b3ff98e32342010b317dda5dda14d2",
+  "candidateArchiveSha256": "15de3eab351e0a814608ba1dc1adeb0de3b97ef87104109cfc396cb92fc686ed",
+  "candidatePluginId": "com.intellij.bookmarks",
+  "candidateVersion": "263.7307.200.1-compat",
+  "implementationJarsUnchanged": {
+    "platform-bookmarks-plugin/lib/modules/intellij.platform.bookmarks.jar": "e26de3e0fe94f64f1a345d789d8a73a214abcdae07f9f0f3d8e8e018a905055b",
+    "platform-bookmarks-plugin/lib/modules/intellij.platform.debugger.impl.bookmarks.jar": "be240082de650eb0a5a3015b0ab686ef8e26682a20251151fc725ff3de8a48d6",
+    "platform-bookmarks-plugin/lib/modules/intellij.platform.vcs.log.impl.bookmarks.jar": "d86dd5aa4fc45d6b1b2e4582bd86743b762e61d0d5201424c2219e52cc43ecdc"
+  },
+  "supportedBuildsChanged": false,
+  "normalIdeProfileChanged": false,
+  "result": "PASS",
+  "runtimeChecks": 432,
+  "runtimeReport": "build/compatibility-probe-263.7307.200/build/runtime-validation.json",
+  "limitation": "Metadata-only isolated runtime probe; licensed Java diagram GUI acceptance is not covered"
+}

@@ -58,6 +58,8 @@ def smoke(sdk, plugin_archive=None, anchors_only=False):
         from io import BytesIO
         with zipfile.ZipFile(BytesIO(package.read("platform-bookmarks-plugin/lib/platform-bookmarks-plugin.jar"))) as jar:
             version = ET.fromstring(jar.read("META-INF/plugin.xml")).findtext("version")
+    if not anchors_only:
+        (ROOT / "build/runtime-validation.json").unlink(missing_ok=True)
     sandbox = ROOT / ("build/anchor-smoke" if anchors_only else "build/runtime-sandbox")
     if sandbox.exists():
         shutil.rmtree(sandbox)
@@ -77,6 +79,8 @@ def smoke(sdk, plugin_archive=None, anchors_only=False):
     with zipfile.ZipFile(archive) as package:
         package.extractall(sandbox / "plugins")
     classpath = [*sorted((sdk / "lib").rglob("*.jar")),
+                 *sorted((sdk / "plugins/platform-tasks-plugin/lib").rglob("*.jar")),
+                 *sorted((sdk / "plugins/platform-vcs-plugin/lib").rglob("*.jar")),
                  *sorted((sdk / "plugins/java/lib").rglob("*.jar")),
                  sdk / "plugins/markdown/lib/intellij.markdown.jar",
                  *sorted((sandbox / "plugins/platform-bookmarks-plugin/lib").rglob("*.jar"))]
@@ -90,6 +94,9 @@ def smoke(sdk, plugin_archive=None, anchors_only=False):
     subprocess.run([str(java_home / "bin/javac"), "@" + str(arguments)], check=True)
     helper = sandbox / "plugins/bookmarks-validation/lib"
     helper.mkdir(parents=True)
+    split_dependencies = "".join(f'<depends>{plugin_id}</depends>' for folder, plugin_id in (
+        ("platform-tasks-plugin", "com.intellij.platform.tasks"), ("platform-vcs-plugin", "com.intellij.platform.vcs"))
+        if (sdk / "plugins" / folder).is_dir())
     with zipfile.ZipFile(helper / "validation.jar", "w", zipfile.ZIP_DEFLATED) as output:
         for path in (sandbox / "helper-classes").rglob("*.class"):
             output.write(path, path.relative_to(sandbox / "helper-classes").as_posix())
@@ -98,7 +105,7 @@ def smoke(sdk, plugin_archive=None, anchors_only=False):
         output.writestr("META-INF/plugin.xml", f"""<idea-plugin>
   <id>bookmarks.validation</id><name>Bookmarks validation</name><version>1</version><vendor>Local</vendor>
   <depends>com.intellij.modules.platform</depends><depends>intellij.bookmarks.plugin</depends>
-  <depends>com.intellij.java</depends>
+  <depends>com.intellij.java</depends>{split_dependencies}
   <extensions defaultExtensionNs="com.intellij"><appStarter id="bookmarks-source-smoke" implementation="bookmarks.validation.{starter}"/>{breakpoint_type}</extensions>
 </idea-plugin>""")
     system = {"Darwin": "macOS", "Linux": "Linux", "Windows": "Windows"}[platform.system()]
@@ -158,7 +165,7 @@ def smoke(sdk, plugin_archive=None, anchors_only=False):
     passed = [line[5:] for line in log.read_text().splitlines() if line.startswith("PASS ")]
     passed.append("IDE portable JSON accepted losslessly by offline AI schema and XML writer")
     report = {"result": "PASS", "sdkVersion": info["version"], "sdkBuild": info["buildNumber"],
-              "pluginVersion": PLUGIN_VERSION, "archiveSha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+              "pluginVersion": version, "archiveSha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
               "installation": "isolated user plugins directory", "ideInstallationModified": False,
               "aiArchiveWriteVerifiedAfterRestart": True,
               "checks": passed}

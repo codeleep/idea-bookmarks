@@ -157,4 +157,4 @@ sequenceDiagram
 
 `.12` 为 `BookmarkRoute` 增加 `notes`，每项使用稳定 `bookmarkId` 和 `markdown` 保存本站说明。同一书签在不同分组路线中可有不同说明，公共描述仍只存一次。说明属于个人阅读状态，随 `BookmarkReadingState` 进入原分支上下文，不进入交换 JSON／Markdown；不升级公开格式 3。保存时检查书签快照、分支上下文代次及旧说明，进度和排序操作保留最新说明。旧阅读状态没有 `notes` 时按空集合读取。
 
-格式 2／3 的恢复按 canonical ID 只解析一次 provider，并让各组引用同一实例；缓存仅在本次恢复内有效。原格式 0 的逐组迁移及严格源码锚点校验保持原有逻辑。修复前后的隔离对照见 [canonical-restore-validation.json](evidence/canonical-restore-validation.json)。
+格式 2／3 的恢复先按 canonical ID 解析 provider，再在同一模型锁内一次性挂载各组引用。恢复状态按 Invoker 最终 Promise 的完成计数；一次尝试被取消并重试时继续保留完整输入快照并拦截交换写入。原格式 0 的逐组迁移及严格源码锚点校验保持原有逻辑。修复前后的隔离对照见 [canonical-restore-validation.json](evidence/canonical-restore-validation.json)。
