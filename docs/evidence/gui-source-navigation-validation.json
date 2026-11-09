@@ -6,7 +6,7 @@
   "fixture": "build/source-navigation-ui/project",
   "automatedRuntime": {
     "result": "PASS",
-    "checks": 417,
+    "checks": 419,
     "report": "runtime-validation.json"
   },
   "gui": {
@@ -27,12 +27,16 @@
       "Existing route note and 1/3 reading progress restored in the docked reading workbench"
     ],
     "javaDiagram": {
-      "status": "PENDING",
-      "reason": "Licensed host GUI rendering and selected-node collection still require positive verification"
+      "status": "USER_REPORTED_NORMAL",
+      "date": "2026-11-09",
+      "feedback": "User reported that the manual acceptance steps appear to work normally after installing .12.",
+      "automatedRenderingVerified": false,
+      "limit": "The agent did not independently capture the complete licensed diagram-rendering and selected-node collection sequence."
     },
     "nativeMoreMenu": {
       "status": "STRUCTURE_VERIFIED",
-      "limit": "Physical popup interaction is not yet verified on the normal host"
+      "limit": "Physical popup interaction is not yet verified on the normal host",
+      "userFeedback": "User reported normal behavior after following the manual acceptance guide; automated physical-popup capture remains incomplete."
     }
   },
   "dataProtection": {
@@ -55,7 +59,13 @@
         "bookmarks": 1506,
         "groups": 177
       }
-    ]
+    ],
+    "closedBookmarkFilesUnchanged": {
+      "next": true,
+      "release": true,
+      "zadax-next": true
+    }
   },
-  "releaseCreated": false
+  "releaseCreated": false,
+  "installationJarsMatchArchive": true
 }

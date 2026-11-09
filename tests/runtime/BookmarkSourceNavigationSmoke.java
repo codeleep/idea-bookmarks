@@ -28,21 +28,43 @@ public final class BookmarkSourceNavigationSmoke {
   private static void reject(Runnable r,String label) {boolean rejected=false;try{r.run();}catch(IllegalArgumentException|IllegalStateException e){rejected=true;}check(rejected,label);}
   private static void restored(BookmarksManagerImpl manager)throws Exception {long end=System.nanoTime()+10_000_000_000L;while(manager.isRestoringBookmarks()&&System.nanoTime()<end)Thread.sleep(20);check(!manager.isRestoringBookmarks(),"source result additions finish native asynchronous restoration");}
   private static String json(BookmarksManagerImpl manager){return BookmarkExchange.toJson(manager.captureForExchange(),null);}
+  private static void awaitIndexes(Project project)throws Exception {
+    var startup=com.intellij.openapi.startup.StartupManager.getInstance(project).getAllActivitiesPassedFuture();
+    var scanner=UnindexedFilesScannerExecutor.getInstance(project);
+    var dumb=DumbService.getInstance(project);
+    long deadline=System.nanoTime()+90_000_000_000L;
+    // Smart mode may briefly occur between scanning and the queued indexer on a fresh Linux profile.
+    // Wait for startup and the scanner as well; the search assertions below remain unconditional.
+    while(System.nanoTime()<deadline) {
+      if(startup.isCompleted()&&!scanner.getHasQueuedTasks()&&!scanner.isRunning().getValue()) {
+        dumb.waitForSmartMode(1000);
+        edt(()->{});
+        if(!dumb.isDumb()&&!scanner.getHasQueuedTasks()&&!scanner.isRunning().getValue()) {
+          check(true,"project startup scanning and indexing complete before native source queries");return;
+        }
+      }
+      Thread.sleep(20);
+    }
+    throw new AssertionError("Source project index readiness timed out: startup="+startup.isCompleted()+", scanning="+scanner.isRunning().getValue()+", queued="+scanner.getHasQueuedTasks()+", dumb="+dumb.isDumb());
+  }
   public static void verify(Path root)throws Exception {
     Path path=root.resolve("source-project");Files.createDirectories(path.resolve(".idea"));Files.createDirectories(path.resolve("src"));
     Files.writeString(path.resolve(".idea/modules.xml"),"<project version=\"4\"><component name=\"ProjectModuleManager\"><modules><module fileurl=\"file://$PROJECT_DIR$/probe.iml\" filepath=\"$PROJECT_DIR$/probe.iml\"/></modules></component></project>");
     Files.writeString(path.resolve("probe.iml"),"<module type=\"JAVA_MODULE\" version=\"4\"><component name=\"NewModuleRootManager\"><content url=\"file://$MODULE_DIR$\"><sourceFolder url=\"file://$MODULE_DIR$/src\" isTestSource=\"false\"/></content><orderEntry type=\"sourceFolder\" forTests=\"false\"/></component></module>");
     var sources=Map.of("Reader","public interface Reader {\n    void read();\n}\n","FileReader","public class FileReader implements Reader {\n\tpublic void read() {}  \t\n}\n","SocketReader","public class SocketReader implements Reader {\n    public void read() {}\n}\n","Client","public class Client {\n    // 中文调用点\n    void run(Reader reader) {\n        reader.read();  \t\n    }\n}\n");
     for(var entry:sources.entrySet())Files.writeString(path.resolve("src/"+entry.getKey()+".java"),entry.getValue());
+    Objects.requireNonNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)).refresh(false,true);
     Project project=ProjectManagerEx.getInstanceEx().openProject(path,new OpenProjectTask(true,null,false,false));
-    check(project!=null,"source analysis opens an actual indexed Java module in an isolated project");
-    DumbService.getInstance(project).waitForSmartMode();
+    check(project!=null,"source analysis opens an actual Java module in an isolated project");
+    awaitIndexes(project);
     var manager=(BookmarksManagerImpl)BookmarksManager.getInstance(project);
     var points=new AtomicReference<List<BookmarkSourceNavigation.Point>>();
     var usagePoint=new AtomicReference<BookmarkSourceNavigation.Point>();
     edt(()->{manager.addGroup("研究入口",true);manager.addGroup("另一条路线",false);BookmarkSourceMenus.installNativeMenus();});
     try {
-      ApplicationManager.getApplication().runReadAction(()->{
+      DumbService.getInstance(project).runReadActionInSmartMode(()->{
+        var index=com.intellij.openapi.roots.ProjectFileIndex.getInstance(project);
+        check(sources.keySet().stream().allMatch(name->index.isInSourceContent(Objects.requireNonNull(LocalFileSystem.getInstance().findFileByNioFile(path.resolve("src/"+name+".java"))))) ,"every Java fixture belongs to the actual module source roots");
         var vf=LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path.resolve("src/Reader.java"));
         var file=(PsiJavaFile)PsiManager.getInstance(project).findFile(vf);var type=file.getClasses()[0];var method=type.getMethods()[0];
         var definitions=DefinitionsScopedSearch.search(type).findAll();

@@ -229,6 +229,9 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
       await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_Z) != null, "interactive import restores through the official live manager");
       edt(() -> {
         var bookmark = manager.getBookmark(BookmarkType.LETTER_Z);
+        if (manager.getGroups(bookmark).size() != 2 || manager.getGroups(bookmark).stream().anyMatch(g -> !"# 导入的共享描述\n\n**中文** & <tag>\n".equals(g.getDescription(bookmark)))) {
+          System.err.println("Import restoration diagnostics: " + BookmarkExchange.toJson(manager.captureForExchange(), null));
+        }
         check(manager.getGroups(bookmark).size() == 2 && manager.getGroups(bookmark).stream().allMatch(g -> "# 导入的共享描述\n\n**中文** & <tag>\n".equals(g.getDescription(bookmark))), "import applies shared description to both groups and detaches stale editors");
         check("ai-stable-bookmark".equals(manager.getBookmarkId(bookmark)) && manager.getParentGroup(manager.getGroupById("ai-child")) == manager.getGroupById("ai-root"), "live import preserves stable IDs and nested hierarchy");
         var expected = manager.captureForExchange();
