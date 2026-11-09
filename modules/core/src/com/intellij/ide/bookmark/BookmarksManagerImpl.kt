@@ -155,10 +155,40 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
         val original = group.name
         var suffix = 2
         while (!names.add(group.parentId to group.name)) group.name = "$original (${suffix++})"
-        saved.bookmarks.forEach { bookmark -> group.addLater(bookmark, bookmark.type, bookmark.description) }
+        if (state.formatVersion == 0) saved.bookmarks.forEach { bookmark -> group.addLater(bookmark, bookmark.type, bookmark.description) }
       }
+      if (state.formatVersion >= 2) restoreNormalized(loaded)
       notifier.groupsSorted()
     }
+  }
+
+  /** Resolve each canonical record once, then attach its complete membership set atomically.
+   * Native background validation must never see a partially restored shared bookmark. */
+  private fun restoreNormalized(groups: List<Pair<GroupState, Group>>) {
+    val records = groups.flatMap { it.first.bookmarks }.associateBy { it.id!! }
+    if (records.isEmpty()) return
+    val generation = restoreGeneration
+    pendingRestores.incrementAndGet()
+    invoker.invokeLater {
+      if (generation != restoreGeneration) return@invokeLater
+      val created = records.mapValues { createBookmark(it.value) }
+      synchronized(notifier) {
+        if (generation != restoreGeneration) return@synchronized
+        groups.forEach { (saved, group) ->
+          saved.bookmarks.forEach { record ->
+            val bookmark = created[record.id]
+            if (bookmark == null) unresolvedBookmarks.getOrPut(group.id) { mutableListOf() }.add(record)
+            else if (group.add(bookmark, record.type, record.description, -1, true)) allBookmarks[bookmark]?.id = record.id!!
+          }
+        }
+      }
+    }.onProcessed { finishRestore() }
+  }
+
+  // A cancelled attempt is retried by Invoker; only its final Promise completion releases the guard.
+  private fun finishRestore() = synchronized(notifier) {
+    check(pendingRestores.decrementAndGet() >= 0) { "Unbalanced bookmark restoration completion" }
+    if (pendingRestores.get() == 0) notifier.groupsSorted()
   }
 
   override fun noStateLoaded() {
@@ -843,34 +873,27 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
       val generation = restoreGeneration
       pendingRestores.incrementAndGet()
       invoker.invokeLater {
-        try {
-          val bookmark = if (generation == restoreGeneration) createBookmark(context) else null
-          synchronized(notifier) {
-            if (generation == restoreGeneration) {
-              when (bookmark?.let { add(it, type, description, -1, true) }) {
-                null -> {
-                  if (context is BookmarkState) {
-                    val existing = unresolvedBookmarks.values.asSequence().flatten().firstOrNull {
-                      it.provider == context.provider && it.attributes == context.attributes
-                    }
-                    context.id = existing?.id ?: context.id ?: UUID.randomUUID().toString()
-                    unresolvedBookmarks.getOrPut(id) { mutableListOf() }.add(context)
+        val bookmark = if (generation == restoreGeneration) createBookmark(context) else null
+        synchronized(notifier) {
+          if (generation == restoreGeneration) {
+            when (bookmark?.let { add(it, type, description, -1, true) }) {
+              null -> {
+                if (context is BookmarkState) {
+                  val existing = unresolvedBookmarks.values.asSequence().flatten().firstOrNull {
+                    it.provider == context.provider && it.attributes == context.attributes
                   }
-                  notifier.groupsSorted()
-                  LOG.info("cannot create bookmark for $context; retained in storage")
+                  context.id = existing?.id ?: context.id ?: UUID.randomUUID().toString()
+                  unresolvedBookmarks.getOrPut(id) { mutableListOf() }.add(context)
                 }
-                false -> LOG.info("cannot add bookmark for $context")
-                else -> if (context is BookmarkState && context.id != null) allBookmarks[bookmark]?.id = context.id!!
+                notifier.groupsSorted()
+                LOG.info("cannot create bookmark for $context; retained in storage")
               }
+              false -> LOG.info("cannot add bookmark for $context")
+              else -> if (context is BookmarkState && context.id != null) allBookmarks[bookmark]?.id = context.id!!
             }
           }
         }
-        finally {
-          synchronized(notifier) {
-            if (pendingRestores.decrementAndGet() == 0) notifier.groupsSorted()
-          }
-        }
-      }
+      }.onProcessed { finishRestore() }
     }
 
     override fun canRemove(bookmark: Bookmark): Boolean = synchronized(notifier) {

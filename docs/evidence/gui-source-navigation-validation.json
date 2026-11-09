@@ -1,0 +1,73 @@
+{
+  "date": "2026-11-09",
+  "pluginVersion": "262.11879.100.12",
+  "sdkBuild": "IU-262.11879.100",
+  "archiveSha256": "ff96967e0fcde225cb32611438b204229b5acc07915c8a57e139b66f18a86b11",
+  "fixture": "build/source-navigation-ui/project",
+  "automatedRuntime": {
+    "result": "PASS",
+    "checks": 432,
+    "report": "runtime-validation.json",
+    "archiveSha256": "e13a09757ead2d3fca4b8a432f28293e76b3ff98e32342010b317dda5dda14d2"
+  },
+  "gui": {
+    "isolatedOfficialIde": [
+      "Native type hierarchy renders Reader with FileReader and SocketReader implementations",
+      "Native call hierarchy renders Client.run as a caller of Reader.read",
+      "Native Find Usages renders the exact Client.java:4 call site",
+      "Two selected implementations are previewed and added to the chosen bookmark group",
+      "Collecting the existing call site reuses its stable bookmark ID and shared description",
+      "Route note Cancel leaves no note; Save renders Markdown separately from the shared description",
+      "Previous step and mark-read actions preserve route notes",
+      "A real GUI restart restores the same route note and 1/3 reading progress"
+    ],
+    "normalUserIde": [
+      "Backed up installed .11 plugin and the latest closed-project bookmark state",
+      "Installed .12 into the user plugin directory without modifying the IDE installation",
+      "Normal IDEA reopened the independent verification project",
+      "Existing route note and 1/3 reading progress restored in the docked reading workbench"
+    ],
+    "javaDiagram": {
+      "status": "USER_REPORTED_NORMAL",
+      "date": "2026-11-09",
+      "feedback": "User reported that the manual acceptance steps appear to work normally after installing .12.",
+      "automatedRenderingVerified": false,
+      "limit": "The agent did not independently capture the complete licensed diagram-rendering and selected-node collection sequence."
+    },
+    "nativeMoreMenu": {
+      "status": "STRUCTURE_VERIFIED",
+      "limit": "Physical popup interaction is not yet verified on the normal host",
+      "userFeedback": "User reported normal behavior after following the manual acceptance guide; automated physical-popup capture remains incomplete."
+    },
+    "indexingProtection": "Source actions show an indexing-in-progress message if native PSI resolution races with a new indexing pass. The normal-host GUI evidence above belongs to the earlier archive recorded at the top level."
+  },
+  "dataProtection": {
+    "businessSourceEdited": false,
+    "existingUserBookmarksRebuilt": false,
+    "backup": "local ignored build/local-idea-backup/source-reading-262.11879.100.12",
+    "closedBaselineCounts": [
+      {
+        "project": "next",
+        "bookmarks": 170,
+        "groups": 38
+      },
+      {
+        "project": "release",
+        "bookmarks": 0,
+        "groups": 1
+      },
+      {
+        "project": "zadax-next",
+        "bookmarks": 1506,
+        "groups": 177
+      }
+    ],
+    "closedBookmarkFilesUnchanged": {
+      "next": true,
+      "release": true,
+      "zadax-next": true
+    }
+  },
+  "releaseCreated": false,
+  "installationJarsMatchArchive": true
+}

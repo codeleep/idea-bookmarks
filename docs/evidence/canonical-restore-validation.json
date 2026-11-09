@@ -1,0 +1,43 @@
+{
+  "result": "PASS",
+  "date": "2026-11-09",
+  "sdkBuild": "262.11879.100",
+  "pluginVersion": "262.11879.100.12",
+  "fixture": "tests/runtime/BookmarkSourceNavigationSmoke.java: RecreatedProvider and two named groups",
+  "before": {
+    "result": "EXPECTED_FAILURE_OBSERVED",
+    "archiveSha256": "8746e329b6c96cb409482fd4373267945f5c55e89a222f86abb6679d08855e40",
+    "failedCheck": "normalized restoration preserves both shared references even when a provider recreates objects",
+    "implementation": "Earlier .12 implementation from the isolated GUI installation; repackaged without code changes"
+  },
+  "after": {
+    "result": "PASS",
+    "archiveSha256": "e13a09757ead2d3fca4b8a432f28293e76b3ff98e32342010b317dda5dda14d2",
+    "runtimeChecks": 432,
+    "verified": [
+      "Both groups reference one canonical bookmark instance and stable ID",
+      "The provider resolves the canonical ID once per normalized restore",
+      "A subsequent restore resolves again with a fresh context cache",
+      "Native shared description import retains both references",
+      "Strict source-anchor matching remains enabled",
+      "Normalized records resolve first, then all group memberships attach under one model lock",
+      "A cancelled native attempt remains guarded while the same Invoker Promise retries",
+      "Persistence retains the complete input snapshot and exchange capture rejects the pending retry",
+      "Forty consecutive imports retain shared membership and detach stale editors"
+    ]
+  },
+  "storageFormatChanged": false,
+  "businessSourceEdited": false,
+  "existingUserBookmarksWritten": false,
+  "retryRegression": {
+    "negativeResult": "EXPECTED_FAILURE_OBSERVED",
+    "negativeCheck": "a cancelled native attempt keeps restoration guarded until its retry finishes",
+    "cause": "Invoker retries reuse a Promise; decrementing the pending counter in the attempt finally block reported completion prematurely",
+    "fix": "Count completion through the final Promise onProcessed callback for normalized and legacy restores",
+    "nativeSDKsVerified": [
+      "262.11879.100",
+      "263.7307.200"
+    ],
+    "test": "RecreatedProvider forces ProcessCanceledException and pauses the second attempt before asserting guard, persistence snapshot and exchange rejection"
+  }
+}

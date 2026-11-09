@@ -113,8 +113,8 @@ public final class BreakpointActionsSmoke {
         actions[1] = registry.getAction("Bookmarks.Breakpoints.Disable");
         var stateGroup = registry.getAction("Bookmarks.Breakpoints.StateActions");
         check(actions[0] != null && actions[1] != null, "enable and disable breakpoint actions are registered");
-        check(Arrays.asList(((ActionGroup)registry.getAction("Bookmarks.ToolWindow.PopupMenu")).getChildren(null)).contains(stateGroup), "breakpoint state actions belong to the actual bookmark context menu");
-        check(Arrays.asList(((ActionGroup)stateGroup).getChildren(null)).subList(0,2).equals(List.of(actions[0],actions[1])), "context menu orders explicit enable before disable");
+        check(Arrays.asList(BookmarkSmokeStarter.children((ActionGroup)registry.getAction("Bookmarks.ToolWindow.PopupMenu"))).contains(stateGroup), "breakpoint state actions belong to the actual bookmark context menu");
+        check(Arrays.asList(BookmarkSmokeStarter.children((ActionGroup)stateGroup)).subList(0,2).equals(List.of(actions[0],actions[1])), "context menu orders explicit enable before disable");
         check(!event(actions[0],project,view[0],a).getPresentation().isEnabled() && event(actions[1],project,view[0],a).getPresentation().isEnabled(), "single enabled breakpoint offers disable");
         actions[1].actionPerformed(event(actions[1],project,view[0],a));
       });

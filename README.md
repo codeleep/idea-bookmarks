@@ -13,7 +13,7 @@
 | 上游提交 | `32cd543bd4ee8e36118f392f28d07da04078849d` |
 | 插件 ID | `intellij.bookmarks.plugin` |
 | 插件名称 | `Bookmarks Manager (Local Source Build)` |
-| 插件版本 | `262.11879.100.11` |
+| 插件版本 | `262.11879.100.12` |
 | 验证环境 | 官方 IDEA 2026.2.4，macOS Apple Silicon，Java 25 |
 
 **安装采用 IDEA 的用户级插件更新机制。** 沿用官方插件 ID、Action ID 和服务接口，使用带稳定 ID 的独立书签表、分组树及引用结构，开发版本在用户插件目录中优先加载。IDE 中只有一套 Bookmarks，现有 Java、VCS、调试器和任务上下文可以继续使用相同接口。卸载这个用户级更新并重启后，IDEA 会使用安装目录内原有的内置版本；新格式数据的降级边界见 [存储说明](docs/STORAGE.md)。
@@ -63,7 +63,7 @@ SDK 的绝对路径仅写入本地 `.idea/` 和根目录 `.iml`，这两类文�
 
 ## 4. 构建与开发运行
 
-构建安装包，产物为 `dist/bookmarks-desktop-262.11879.100.11.zip`。
+构建安装包，产物为 `dist/bookmarks-desktop-262.11879.100.12.zip`。
 
 ```bash
 ./gradlew buildPlugin
@@ -96,7 +96,7 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 **只有推送匹配版本的 tag 才会打包分发并发布 Release。** 分支推送、PR 和合入 `main` 只做编译及 IDE 运行验证，不上传正式安装包，也不创建 Release 或自动创建 tag。
 
 1. 在 `feature/<名称>` 或 `fixbug/<名称>` 分支开发，通过 PR 合入 `main`。
-2. 需要发版时，确认 `plugin/plugin.xml` 的版本号，在对应的 `main` 已合入提交上创建并推送 `v<版本号>` tag，例如 `v262.11879.100.11`。
+2. 需要发版时，确认 `plugin/plugin.xml` 的版本号，在对应的 `main` 已合入提交上创建并推送 `v<版本号>` tag，例如 `v262.11879.100.12`。
 3. tag 工作流校验版本、提交及 `main` 归属，构建验证成功后上传安装包、完整源码及报告，创建对应 Release。
 4. 在 IDEA 中执行 **Install Plugin from Disk**，直接选择 Release 中的 ZIP，然后重启。
 
@@ -114,9 +114,9 @@ python3 tools/build.py --idea-home "$BOOKMARKS_IDEA_HOME"
 
 1. 确认 `Help → About` 中的版本为 IDEA 2026.2.4，构建号 `262.11879.100`。
 2. 打开 `Settings → Plugins → 齿轮 → Install Plugin from Disk`。
-3. 选择 `dist/bookmarks-desktop-262.11879.100.11.zip`。
+3. 选择 `dist/bookmarks-desktop-262.11879.100.12.zip`。
 4. 确认本地构建插件的来源提示，应用设置并重启 IDEA。
-5. 已安装插件中应显示 `Bookmarks Manager (Local Source Build)`，版本 `262.11879.100.11`。
+5. 已安装插件中应显示 `Bookmarks Manager (Local Source Build)`，版本 `262.11879.100.12`。
 6. 打开 `View → Tool Windows → Bookmarks`，添加和导航书签。
 
 本机旧版 IDEA 2025.2.1 不在兼容范围内。用户插件目录由 IDEA 管理，安装过程不需要拷贝文件到 `.app/Contents/plugins` 或修改 IDEA 的 JAR。
@@ -166,6 +166,8 @@ AI 行书签的 `line` 从 0 开始；`lineText` 可省略，提供时必须保�
 
 [存储结构说明](docs/STORAGE.md) 列出了格式、位置、迁移、设置和降级边界。[AI 整理指南](docs/AI_BOOKMARKS.md) 提供当前项目及指定 Git 分支历史的导出、编辑、校验、写回和验收步骤。工具要求目标项目关闭，校验源文件版本并自动备份，避免覆盖其他分支的上下文。
 
+`.12` 在原生“⋮ → 源码分析”中连接定义、文档、实现、继承、重写、调用、引用、数据流、类图与代码历史。可从原生 Find／层次结果选择位置加入分组，并在阅读路线编辑独立的 Markdown“本站说明”。类图按宿主语言模块和授权情况启用；隔离 SDK 未具备 Java 类图正向渲染条件，验收边界见 [源码阅读与原生能力](docs/SOURCE_READING.md)。
+
 ## 9. 导入、导出与分享
 
 在 Bookmarks 工具窗口右上角原生“⋮”菜单或右键菜单打开“导入、导出与分享”。可以导出当前上下文全部书签，或选中分组及其完整子树。
@@ -185,7 +187,7 @@ AI 行书签的 `line` 从 0 开始；`lineText` 可省略，提供时必须保�
 ./gradlew verifyOriginalSources smokeTest
 ```
 
-自动检查共 369 项，覆盖插件实际加载、原生 Markdown 文档及编辑器提供器、编辑回写、多层分组、循环拦截、嵌套导航、XML 恢复和旧数据迁移，以及多组引用、共享描述、删除范围和代码行位置变化。新版增加格式 2、原版分支保存/恢复、严格校验、未知 provider 保留和 AI 写入格式与 IDE 读取的联通检查。导入导出新增真实导航、可移植 JSON 与离线工具互通、合并冲突、备份失败拦截、旧编辑缓冲区隔离和预览过期保护检查。精确锚点新增缩进、Tab、尾空白、中文、严格失效节点及原版保护检查，另在已发布 `.6` 上通过 31 项兼容检查并完成真实界面跳转，记录见 `docs/evidence/exact-anchor-validation.json`。全文搜索增加完整正文、代码块、长行尾部、中文、组合匹配、共享去重、Unicode 摘要偏移及工具栏注册检查；实际界面搜索和跳转记录见 `docs/evidence/gui-search-validation.json`。书签图标提示新增名称、中文及特殊字符、共享更新、空描述和只读性检查。断点列表新增 27 项原生检查，覆盖真实断点的单选/批量启停、混合状态、颜色恢复、禁用后导航、选择范围、过期选择及书签数据只读性；GUI 验证记录见 `docs/evidence/gui-breakpoints-validation.json`。工作台新增格式 3、关系合并与端点重映射、内部链接、文件复核、共享快照、过期防护和重启恢复检查，GUI 记录见 `docs/evidence/gui-workbench-validation.json`。布局调整新增 340 像素宽度下的按钮检查、路线顺序与最新进度保留、无效排序拦截和主工具栏入口整理，GUI 记录见 `docs/evidence/gui-action-layout-validation.json`。历史 GUI 检查见 `docs/VALIDATION.md`，当前验证见 `docs/evidence/runtime-validation.json`。
+自动检查共 432 项，覆盖插件实际加载、原生 Markdown 文档及编辑器提供器、编辑回写、多层分组、循环拦截、嵌套导航、XML 恢复和旧数据迁移，以及多组引用、共享描述、删除范围和代码行位置变化。新版增加格式 2、原版分支保存/恢复、严格校验、未知 provider 保留和 AI 写入格式与 IDE 读取的联通检查。导入导出新增真实导航、可移植 JSON 与离线工具互通、合并冲突、备份失败拦截、旧编辑缓冲区隔离和预览过期保护检查。精确锚点新增缩进、Tab、尾空白、中文、严格失效节点及原版保护检查，另在已发布 `.6` 上通过 31 项兼容检查并完成真实界面跳转，记录见 `docs/evidence/exact-anchor-validation.json`。全文搜索增加完整正文、代码块、长行尾部、中文、组合匹配、共享去重、Unicode 摘要偏移及工具栏注册检查；实际界面搜索和跳转记录见 `docs/evidence/gui-search-validation.json`。书签图标提示新增名称、中文及特殊字符、共享更新、空描述和只读性检查。断点列表新增 27 项原生检查，覆盖真实断点的单选/批量启停、混合状态、颜色恢复、禁用后导航、选择范围、过期选择及书签数据只读性；GUI 验证记录见 `docs/evidence/gui-breakpoints-validation.json`。工作台新增格式 3、关系合并与端点重映射、内部链接、文件复核、共享快照、过期防护和重启恢复检查，GUI 记录见 `docs/evidence/gui-workbench-validation.json`。布局调整新增 340 像素宽度下的按钮检查、路线顺序与最新进度保留、无效排序拦截和主工具栏入口整理，GUI 记录见 `docs/evidence/gui-action-layout-validation.json`。历史 GUI 检查见 `docs/VALIDATION.md`，当前验证见 `docs/evidence/runtime-validation.json`。
 
 生成可分享的完整工程源码包。
 
@@ -193,7 +195,7 @@ AI 行书签的 `line` 从 0 开始；`lineText` 可省略，提供时必须保�
 ./gradlew sourceZip
 ```
 
-产物为 `dist/idea-bookmarks-262.11879.100.11-sources.zip`。源码归档包含可编辑模块、官方公开源码快照、Wrapper、工具、测试和文档；官方 IDEA SDK、下载缓存及本机配置不放入归档。
+产物为 `dist/idea-bookmarks-262.11879.100.12-sources.zip`。源码归档包含可编辑模块、官方公开源码快照、Wrapper、工具、测试和文档；官方 IDEA SDK、下载缓存及本机配置不放入归档。
 
 ## 11. 来源与许可
 

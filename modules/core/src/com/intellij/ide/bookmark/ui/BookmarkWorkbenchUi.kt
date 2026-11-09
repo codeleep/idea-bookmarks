@@ -43,6 +43,10 @@ internal object BookmarkWorkbenchUi {
   fun menuActions(menu: JPopupMenu): Array<AnAction> = menu.components.mapNotNull { item ->
       when (item) {
         is JSeparator -> com.intellij.openapi.actionSystem.Separator.create()
+        is JMenu -> DefaultActionGroup(item.text, true).apply {
+          templatePresentation.isEnabled = item.isEnabled
+          addAll(*menuActions(item.popupMenu))
+        }
         is JMenuItem -> object : DumbAwareAction(item.text, item.toolTipText, item.icon) {
           init { templatePresentation.isEnabled = item.isEnabled }
           override fun actionPerformed(event: AnActionEvent) { if (item.isEnabled) item.doClick(0) }

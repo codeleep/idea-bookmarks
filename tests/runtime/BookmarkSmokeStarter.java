@@ -85,6 +85,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         verifyAiArchiveAfterRestart(root, filePath);
         return;
       }
+      BookmarkSourceNavigationSmoke.verify(root);
       AnchorSmokeStarter.verify(root);
       edt(() -> {
         project = ProjectManagerEx.getInstanceEx().newProject("bookmarks-validation", filePath.getParent().toString(), false, false);
@@ -228,6 +229,9 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
       await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_Z) != null, "interactive import restores through the official live manager");
       edt(() -> {
         var bookmark = manager.getBookmark(BookmarkType.LETTER_Z);
+        if (manager.getGroups(bookmark).size() != 2 || manager.getGroups(bookmark).stream().anyMatch(g -> !"# 导入的共享描述\n\n**中文** & <tag>\n".equals(g.getDescription(bookmark)))) {
+          System.err.println("Import restoration diagnostics: " + BookmarkExchange.toJson(manager.captureForExchange(), null));
+        }
         check(manager.getGroups(bookmark).size() == 2 && manager.getGroups(bookmark).stream().allMatch(g -> "# 导入的共享描述\n\n**中文** & <tag>\n".equals(g.getDescription(bookmark))), "import applies shared description to both groups and detaches stale editors");
         check("ai-stable-bookmark".equals(manager.getBookmarkId(bookmark)) && manager.getParentGroup(manager.getGroupById("ai-child")) == manager.getGroupById("ai-root"), "live import preserves stable IDs and nested hierarchy");
         var expected = manager.captureForExchange();
@@ -237,6 +241,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         check("预览期间修改".equals(manager.getGroupById("ai-root").getName()), "rejected stale preview retains current state");
         manager.getGroupById("ai-root").setName("AI 根组");
       });
+      sharedImportCycles(40);
       edt(() -> BookmarkWorkflowsSmoke.prepareRestart(project, manager));
       edt(() -> BookmarkWorkbenchSmoke.prepareRestart(project, manager, file));
       await(() -> !manager.isRestoringBookmarks(), "relation fixture restoration completes before saving the project");
@@ -315,7 +320,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     var action = actions.getAction("Bookmarks.Search");
     check(action != null && action.getTemplatePresentation().getIcon() != null, "installed plugin registers the full-text search icon action");
     var toolbar = (com.intellij.openapi.actionSystem.ActionGroup)actions.getAction("Bookmarks.ToolWindow.TitleActions");
-    var children = java.util.Arrays.asList(toolbar.getChildren(null));
+    var children = java.util.Arrays.asList(children(toolbar));
     check(children.indexOf(action) == children.indexOf(actions.getAction("BookmarksView.Create")) + 1, "full-text search action follows Create Bookmark List in the toolbar");
   }
 
@@ -662,8 +667,8 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
   }
 
   private static void verifyAiArchiveAfterRestart(Path root, Path filePath) throws Exception {
+    project = ProjectManagerEx.getInstanceEx().loadProject(filePath.getParent());
     edt(() -> {
-      project = ProjectManagerEx.getInstanceEx().loadProject(filePath.getParent());
       manager = (BookmarksManagerImpl)BookmarksManager.getInstance(project);
     });
     await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_Z) != null, "fresh IDE restores normalized project state from disk");
@@ -692,6 +697,29 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     System.exit(0);
   }
 
+  private static void sharedImportCycles(int count) throws Exception {
+    for (int cycle=0;cycle<count;cycle++) {
+      String description=cycle==count-1?"# 导入的共享描述\n\n**中文** & <tag>\n":"# 连续导入 "+cycle+"\n\n共享说明";
+      edt(() -> {
+        var expected=manager.captureForExchange();var bookmark=manager.getBookmark(BookmarkType.LETTER_Z);
+        var old=FileDocumentManager.getInstance().getDocument(MarkdownDescriptionEditor.getInstance(project).getDescriptionFile(manager.getGroupById("ai-child"),bookmark));
+        var proposed=BookmarkExchange.copy(expected);
+        proposed.getBookmarks().stream().filter(b->"ai-stable-bookmark".equals(b.getId())).findFirst().orElseThrow().setDescription(description);
+        manager.applyExchange(expected,manager.getStateModificationCount(),proposed);
+        WriteCommandAction.runWriteCommandAction(project,()->old.setText("过期编辑页"));
+      });
+      long end=System.nanoTime()+10_000_000_000L;
+      while(manager.isRestoringBookmarks()&&System.nanoTime()<end)Thread.sleep(20);
+      edt(()->{
+        var bookmark=manager.getBookmark(BookmarkType.LETTER_Z);
+        if(manager.isRestoringBookmarks()||bookmark==null||manager.getGroups(bookmark).size()!=2||
+          manager.getGroups(bookmark).stream().anyMatch(g->!description.equals(g.getDescription(bookmark))))
+          throw new AssertionError("Repeated import lost shared identity: "+BookmarkExchange.toJson(manager.captureForExchange(),null));
+      });
+    }
+    check(true,"forty consecutive native imports preserve both shared references and detach every stale description editor");
+  }
+
   private static GroupState groupState(String id, String parentId, String name) {
     GroupState result = new GroupState(); result.setId(id); result.setParentId(parentId); result.setName(name); return result;
   }
@@ -700,6 +728,11 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     long deadline = System.nanoTime() + 10_000_000_000L;
     while (!condition.getAsBoolean() && System.nanoTime() < deadline) Thread.sleep(20);
     check(condition.getAsBoolean(), label);
+  }
+
+  static com.intellij.openapi.actionSystem.AnAction[] children(com.intellij.openapi.actionSystem.ActionGroup group) {
+    return group instanceof com.intellij.openapi.actionSystem.DefaultActionGroup defaults
+        ? defaults.getChildren(com.intellij.openapi.actionSystem.ActionManager.getInstance()) : group.getChildren(null);
   }
 
   private static void check(boolean condition, String label) {

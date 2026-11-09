@@ -1,0 +1,138 @@
+# 源码阅读与 IDEA 原生能力
+
+## 1. 目标与结论
+
+本功能面向“查源码、挑重点、组织阅读、补充讲解”的工作流。目标版本为官方 IDEA 2026.2.4 / 262.11879.100，插件开发版本为 262.11879.100.12。原生功能由宿主 IDEA 和语言插件提供，Bookmarks 保存明确选择的源码位置和阅读说明。
+
+2026-11-09 已在隔离 Java 项目实际确认索引查询、继承树、调用层次、Find 使用位置收录、共享书签复用和路线说明。**Java 类图需要宿主模块及授权。用户在正常 IDEA 手工验收后反馈“好像都正常了”；隔离环境尚未完成类图正向渲染及图节点收录的独立自动化验收。** 原生菜单物理点击受 GUI 自动化限制，菜单注册与页签范围由安装插件内的运行检查验证。
+
+## 2. 原生能力与接入选择
+
+下面的对应关系决定哪些能力由 IDEA 展示，哪些信息由插件保存。
+
+| 阅读目的 | 原生能力 | 本插件承担的工作 |
+| --- | --- | --- |
+| 看文件轮廓 | Structure、File Structure、折叠 | 保存重要入口和阅读顺序 |
+| 原地查看细节 | Quick Definition、Quick Documentation | 从书签定位源码符号并调用原生 Action |
+| 看抽象与实现 | 类型层次、实现跳转、方法层次 | 从选中结果收录声明位置 |
+| 看谁调用谁 | 原生调用层次 | 整理关键调用节点，补充选择理由 |
+| 查实际使用点 | Find Usages、范围、分组、预览 | 保留使用行的位置，复用已有书签 |
+| 跟踪值的来源与去向 | Data Flow to/from Here | 保存关键位置和相关解释 |
+| 看类结构与依赖 | 原生 Diagrams | 按宿主语言模块可用性开放入口 |
+| 验证理解 | 原生测试导航、调试、Git 历史 | 在本站说明中记录依据与待确认问题 |
+
+这些能力的官方依据分别见 [阅读教程](https://www.jetbrains.com/guide/java/tutorials/reading-code/)、[源码层次](https://www.jetbrains.com/help/idea/viewing-structure-and-hierarchy-of-the-source-code.html)、[Find 窗口](https://www.jetbrains.com/help/idea/find-tool-window.html)、[数据流](https://www.jetbrains.com/help/idea/analyzing-data-flow.html)、[类图](https://www.jetbrains.com/help/idea/class-diagram.html) 和 [代码历史](https://www.jetbrains.com/help/idea/investigate-changes.html)。在线帮助可能随新版更新；实际接口与动作 ID 以本工程固定的 262 SDK 运行检查为准。
+
+## 3. 使用步骤
+
+1. 在 Bookmarks 选中一个普通文件／行书签，打开工具窗口右上角原生“⋮ → 源码分析”。阅读工作台各页的原生“⋮”菜单也提供当前书签的源码分析入口。
+2. 选择继承、实现、重写、调用、引用、定义、文档、数据流、类图或历史，结果在 IDEA 自带的窗口显示。声明行定位到声明名称；一行存在多个可分析符号时，先选择需要分析的那个符号。
+3. 在原生 Find 或层次窗口选中具体源码结果，可多选，然后执行“加入书签／阅读路线…”。也可在结果区域获得焦点后通过 Find Action 查找该操作。
+4. 在收录窗口复核文件和显示行号，选择现有分组或新建根分组，再点击“加入分组”。该分组的阅读路线会自动包含这些书签。
+5. 在阅读路线选中一步，使用原生“⋮ → 编辑本站说明…”记录阅读问题、下一站理由、源码／测试／提交依据和待确认项；路线列表获得焦点后也可通过 Find Action 打开。
+
+查找引用得到的是使用位置；继承／实现结果得到的是声明位置。插件按原生结果提供的范围定位，不把使用位置转换成其方法声明。
+
+## 4. 菜单与组件
+
+主工具栏继续保留四个常用按钮。新增管理入口放在原生扩展菜单，工作台内容区不增加新的“更多”按钮。原生分析操作通过以下 Action 进入。
+
+| 操作 | 262 SDK Action ID |
+| --- | --- |
+| 快速查看定义 | `QuickImplementations` |
+| 查看文档 | `QuickJavaDoc` |
+| 查找实现 | `GotoImplementation` |
+| 父类／父方法 | `GotoSuperMethod` |
+| 类型层次 | `TypeHierarchy` |
+| 方法重写层次 | `MethodHierarchy` |
+| 调用层次 | `CallHierarchy` |
+| 查找引用 | `FindUsages` |
+| 数据来源／去向 | `SliceBackward` / `SliceForward` |
+| 原生类图 | `ShowUmlDiagram` |
+| 代码历史 | `Vcs.ShowHistoryForBlock` |
+
+结果收录使用 `UsageView.USAGES_KEY`、`USAGE_INFO_LIST_KEY`、选中描述符、PSI 数组或原生导航位置。Find 合并行中的多个 usage 范围逐个读取，同一文件同一行去重。临时文件、反编译库文件、目录及不能定位源码的项目会跳过并显示数量；一次最多整理 500 个位置。
+
+原生 Find 的分组、筛选、源码预览、重新查询和固定页签继续由 IDEA 管理。插件不维护第二份项目索引、继承分析器或调用分析器。
+
+## 5. 数据保护与锚点
+
+下图说明只有经过明确选择、复核与备份的源码位置进入书签存储。
+
+```mermaid
+flowchart LR
+    A[选中书签] --> B[原生源码分析]
+    B --> C[选择查询结果]
+    C --> D[预览位置与目标分组]
+    D --> E[检查源码和书签上下文]
+    E --> F[完整备份与模型恢复]
+    F --> G[分组引用与阅读路线]
+```
+
+内部行号从 0 开始，界面显示从 1 开始。`lineText` 直接取 IDEA Document 的完整原行，不包含换行符，保留缩进、Tab、中文及尾空白；不调用任何去除首尾空白的操作。保持原 provider 的严格匹配。
+
+同一位置复用现有稳定 ID、快捷标记与共享描述，仅增加目标分组引用；重复收录到同一组是无损空操作。已有位置的文本锚点失效时拒绝收录并要求先巡检，不静默修复已有书签。
+
+写入前检查预览期间的 Document 修改版本、源码行原文及书签模型版本，拒绝过期选择。使用现有 `applyExchange` 保存完整 JSON 备份后恢复模型，保留其他书签、关联和共享引用。源码导航、结果收录及说明编辑均不保存或改写业务源码。
+
+## 6. 本站说明
+
+共享描述回答“这个书签是什么”，本站说明回答“在这条路线中为什么看这里”。同一稳定书签 ID 在不同分组路线中可以有不同说明。
+
+说明使用 IDEA 的编辑组件和 Markdown 文件类型编辑，保存后在路线预览中渲染。可使用现有 `bookmark://` 内部链接，例如连接下一站或设计依据。取消不写回，保存时检查上下文代次和旧说明，避免覆盖其他窗口或其他分支的新内容。
+
+| 数据 | 保存范围 |
+| --- | --- |
+| 书签位置、共享描述、分组引用、人工关联 | 公开格式 3 的书签状态 |
+| 路线顺序、当前站、已读状态、本站说明 | 个人 `BookmarksWorkspace.reading` |
+| 分支恢复 | 沿用原任务上下文中的 `BookmarkReadingState` |
+| JSON／Markdown 分享 | 本站说明与个人进度不参与当前公开交换格式 |
+
+每步说明最多 50000 字符。旧阅读状态缺少 `notes` 时按空集合读取；路线移除某书签后清理相应说明。导航和排序保存最新说明，说明编辑保存最新进度；书签共享描述不会因此改变。
+
+## 7. 原生类图与运行路径边界
+
+262 SDK 的原生 Diagrams 使用新版 GraphChart 适配层。存在 `ShowUmlDiagram` Action，并不表示 Java 类图模块已可用；本实现对 Java／Kotlin 额外检查 `NewJavaDiagram` Action，缺失时禁用菜单项，直接调用时给出宿主功能不可用提示。
+
+类图选中结果收录入口在宿主原生图菜单存在时注册，定位仍通过原生选中数据和导航位置，不能定位时不写入。基础书签不强制依赖 Diagrams，不复制其实现或绕过宿主授权。
+
+原生 UML 主要表示类结构与依赖，静态调用树也不等于某次执行路径。多态、反射、动态注入和异步调度需要结合配置与运行证据解释。原生 UML 的部分编辑操作会同步修改源码；插件的人工讲解关系继续写入书签元数据，不调用 UML 连线编辑来保存讲解关系。
+
+## 8. 验证与剩余边界
+
+证据按层次区分，不能用 Action 存在代替实际运行。
+
+| 层次 | 已验证内容 |
+| --- | --- |
+| 固定 SDK 与接口 | 原生 Action ID、类型与调用 provider、Find 与层次选中数据、类图适配层 |
+| 索引运行检查 | 实际 Java 模块查询出两个接口实现及一个方法引用 |
+| 安装包运行检查 | 源码结果收录、共享复用、严格锚点、过期拦截、说明隔离与真实项目重启 |
+| 真实 GUI | 原生继承树、调用者树、Find 的调用行、多选收录、说明取消／保存与预览 |
+| 用户手工反馈 | 已授权宿主上的类图验收反馈正常；完整类图交互未由代理独立捕获 |
+| 条件未满足 | 未启用 Ultimate 的隔离 SDK 不能独立验收 Java 类图正向渲染和图节点收录 |
+| 自动化限制 | 原生标题栏扩展菜单的物理点击未完整捕获；菜单结构和页签范围有运行检查 |
+
+当前运行报告见 [runtime-validation.json](evidence/runtime-validation.json)，GUI 证据见 [gui-source-navigation-validation.json](evidence/gui-source-navigation-validation.json)。新功能不隐式创建 tag 或 Release。
+
+## 9. 双 SDK 与恢复取消回归
+
+2026-11-09 已完成以下隔离运行检查；正式安装包仍精确支持 `262.11879.100`。
+
+| SDK | 被测包 | 结果与边界 |
+| --- | --- | --- |
+| IDEA 2026.2.4 / 262.11879.100 | 正式构建的 `.12` 字节码与元数据 | 实测：432 项检查通过，包含真实进程重启与分支归档恢复 |
+| IDEA 2026.3 / 263.7307.200 | 相同的三个实现 JAR，加实验性元数据 | 实测：432 项检查通过；尚未独立验收已授权 Java 类图 GUI，不作为正式兼容声明 |
+
+263 的官方 Bookmarks 主 ID 改为 `com.intellij.bookmarks`，同时提供 `intellij.bookmarks.plugin` 旧别名。候选包使用新版主 ID、保留旧别名，并采用高于宿主内置版本的 `263.7307.200.1-compat` 测试版本。Tasks 和 VCS API 的测试编译路径也随新版独立插件目录补齐。只放宽 `until-build` 会发生 ID 冲突；继续使用 262 的版本号还会被较新的内置实现覆盖。
+
+`tools/compatibility_smoke.py` 在 `build/` 中准备候选副本，仅改元数据，并校验三个实现 JAR 与正式构建逐字节一致。它不修改正式描述符、IDEA 安装目录或日常 IDE 配置。复现命令如下。
+
+```bash
+python3 tools/build.py --idea-home ".cache/IntelliJ IDEA 2026.2.4.app"
+python3 tools/runtime_smoke.py --idea-home ".cache/IntelliJ IDEA 2026.2.4.app"
+python3 tools/compatibility_smoke.py --idea-home ".cache/IntelliJ IDEA 2026.3.app"
+```
+
+共享恢复回归包含两类反例：provider 每次创建不同对象时，旧实现会拆分同一 canonical ID；原生 Invoker 取消后重试时，旧实现会在尝试的 `finally` 中提前减掉恢复计数。新测试显式抛出 `ProcessCanceledException`，暂停第二次尝试，确认恢复保护保持启用、持久化仍返回完整输入快照、交换捕获被拒绝；释放后检查两组引用和稳定 ID，并再连续导入 40 次。
+
+修复使用最终 Promise 的 `onProcessed` 释放计数，规范化恢复按 ID 解析并一次性挂载引用。格式 0 的迁移逻辑和原生 provider 的严格锚点保护保留。证据见 [共享恢复对照](evidence/canonical-restore-validation.json)、[263 候选包报告](evidence/sdk-263-compatibility-validation.json) 及 [263 运行明细](evidence/runtime-validation-263-candidate.json)。原始日志和候选副本保留在本机忽略的 `build/` 下，便于继续复核；不进入正式源码归档或 Release。
