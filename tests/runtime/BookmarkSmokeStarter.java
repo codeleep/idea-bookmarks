@@ -319,7 +319,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     var action = actions.getAction("Bookmarks.Search");
     check(action != null && action.getTemplatePresentation().getIcon() != null, "installed plugin registers the full-text search icon action");
     var toolbar = (com.intellij.openapi.actionSystem.ActionGroup)actions.getAction("Bookmarks.ToolWindow.TitleActions");
-    var children = java.util.Arrays.asList(toolbar.getChildren(null));
+    var children = java.util.Arrays.asList(children(toolbar));
     check(children.indexOf(action) == children.indexOf(actions.getAction("BookmarksView.Create")) + 1, "full-text search action follows Create Bookmark List in the toolbar");
   }
 
@@ -704,6 +704,11 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     long deadline = System.nanoTime() + 10_000_000_000L;
     while (!condition.getAsBoolean() && System.nanoTime() < deadline) Thread.sleep(20);
     check(condition.getAsBoolean(), label);
+  }
+
+  static com.intellij.openapi.actionSystem.AnAction[] children(com.intellij.openapi.actionSystem.ActionGroup group) {
+    return group instanceof com.intellij.openapi.actionSystem.DefaultActionGroup defaults
+        ? defaults.getChildren(com.intellij.openapi.actionSystem.ActionManager.getInstance()) : group.getChildren(null);
   }
 
   private static void check(boolean condition, String label) {

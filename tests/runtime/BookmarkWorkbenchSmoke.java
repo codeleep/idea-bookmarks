@@ -167,7 +167,7 @@ public final class BookmarkWorkbenchSmoke {
         var actions=ActionManager.getInstance();var primary=(com.intellij.openapi.actionSystem.ActionGroup)actions.getAction("Bookmarks.ToolWindow.TitleActions");
         var more=(com.intellij.openapi.actionSystem.ActionGroup)actions.getAction("Bookmarks.ToolWindow.MoreActions");
         var gear=(com.intellij.openapi.actionSystem.ActionGroup)actions.getAction("Bookmarks.ToolWindow.GearActions");
-        check(primary.getChildren(null).length==4&&Arrays.asList(gear.getChildren(null)).contains(more)&&!more.isPopup()&&Arrays.asList(more.getChildren(null)).containsAll(List.of(actions.getAction("Bookmarks.Exchange"),actions.getAction("Bookmarks.Inspect"),actions.getAction("ManageBookmarkGroups"))),"bookmark toolbar keeps four primary entries and places secondary actions in its native extension menu");
+        check(BookmarkSmokeStarter.children(primary).length==4&&Arrays.asList(BookmarkSmokeStarter.children(gear)).contains(more)&&!more.isPopup()&&Arrays.asList(BookmarkSmokeStarter.children(more)).containsAll(List.of(actions.getAction("Bookmarks.Exchange"),actions.getAction("Bookmarks.Inspect"),actions.getAction("ManageBookmarkGroups"))),"bookmark toolbar keeps four primary entries and places secondary actions in its native extension menu");
         var a=manager.getBookmarks().stream().filter(b->"a".equals(manager.getBookmarkId(b))).findFirst().get();
         manager.getGroupById("wb-root").remove(a);
         check(manager.captureForExchange().getRelations().size()==1,"removing one group reference preserves the shared bookmark relation");

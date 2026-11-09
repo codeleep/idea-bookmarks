@@ -23,6 +23,22 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Native indexed project, real Find adapters, and the installed plugin's transactional writer. */
 public final class BookmarkSourceNavigationSmoke {
+  private static final class RecreatedProvider implements BookmarkProvider {
+    private final Project project;int calls;
+    RecreatedProvider(Project project){this.project=project;}
+    public Project getProject(){return project;}
+    public int getWeight(){return 0;}
+    public int compare(Bookmark a,Bookmark b){return 0;}
+    public Bookmark createBookmark(Object context){return null;}
+    public Bookmark createBookmark(Map<String,String> attributes){
+      calls++;
+      return new Bookmark(){
+        public BookmarkProvider getProvider(){return RecreatedProvider.this;}
+        public Map<String,String> getAttributes(){return Map.copyOf(attributes);}
+        public com.intellij.ide.util.treeView.AbstractTreeNode<?> createNode(){return null;}
+      };
+    }
+  }
   private static void edt(Runnable r) { ApplicationManager.getApplication().invokeAndWait(r); }
   private static void check(boolean ok,String label) { if(!ok)throw new AssertionError(label);System.out.println("PASS "+label); }
   private static void reject(Runnable r,String label) {boolean rejected=false;try{r.run();}catch(IllegalArgumentException|IllegalStateException e){rejected=true;}check(rejected,label);}
@@ -85,9 +101,25 @@ public final class BookmarkSourceNavigationSmoke {
         var empty=BookmarkSourceNavigation.selected(project,SimpleDataContext.builder().add(CommonDataKeys.PSI_ELEMENT,invalid).build());
         check(empty.getPoints().isEmpty()&&empty.getSkipped()==1,"temporary and nonlocal source selections remain unbookmarked");
       });
+      var original=manager.captureForExchange();
+      var lifetime=com.intellij.openapi.util.Disposer.newDisposable("canonical restore provider");
+      var recreated=new RecreatedProvider(project);
+      edt(()->BookmarkProvider.EP.getPoint(project).registerExtension(recreated,lifetime));
+      try {
+        var shared=BookmarkExchange.copy(original);
+        var record=new BookmarkState();record.setId("canonical-provider-bookmark");record.setProvider(RecreatedProvider.class.getName());record.setType(BookmarkType.DEFAULT);record.setDescription("共享说明");record.getAttributes().put("symbol","shared");shared.getBookmarks().add(record);
+        shared.getGroups().stream().filter(group->Set.of("研究入口","另一条路线").contains(group.getName())).forEach(group->group.getBookmarkIds().add(record.getId()));
+        edt(()->manager.loadState(shared));restored(manager);
+        check(manager.getBookmarks().size()==1&&manager.getGroups(manager.getBookmarks().getFirst()).size()==2,"normalized restoration preserves both shared references even when a provider recreates objects");
+        check(recreated.calls==1&&"canonical-provider-bookmark".equals(manager.getBookmarkId(manager.getBookmarks().getFirst())),"one canonical ID resolves once while retaining its stable identity");
+        edt(()->manager.loadState(shared));restored(manager);
+        check(recreated.calls==2&&manager.getBookmarks().size()==1&&manager.getGroups(manager.getBookmarks().getFirst()).size()==2,"a later restore resolves the canonical bookmark again without reusing a previous context cache");
+      } finally {
+        edt(()->manager.loadState(original));restored(manager);com.intellij.openapi.util.Disposer.dispose(lifetime);
+      }
       for(var operation:BookmarkSourceNavigation.Operation.values())check(ActionManager.getInstance().getAction(operation.getActionId())!=null,"native source operation resolves: "+operation.name());
       var action=ActionManager.getInstance().getAction("Bookmarks.AddSourceResults");
-      for(String group:List.of("UsageView.Popup","HierarchyPopupMenu.Common","UML.DefaultGraphPopup"))check(Arrays.asList(((ActionGroup)ActionManager.getInstance().getAction(group)).getChildren(null)).contains(action),"result action joins native menu "+group);
+      for(String group:List.of("UsageView.Popup","HierarchyPopupMenu.Common","UML.DefaultGraphPopup"))check(Arrays.asList(BookmarkSmokeStarter.children((ActionGroup)ActionManager.getInstance().getAction(group))).contains(action),"result action joins native menu "+group);
       String target=manager.getGroupId(manager.getGroup("研究入口"));String other=manager.getGroupId(manager.getGroup("另一条路线"));
       var result=new AtomicReference<BookmarkSourceNavigation.Addition>();
       edt(()->result.set(BookmarkSourceNavigation.add(project,manager,manager.captureForExchange(),manager.getStateModificationCount(),points.get(),target,null)));

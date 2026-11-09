@@ -123,6 +123,9 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
 
   override fun loadState(state: ManagerState) {
     val resolved = BookmarkStorageFormat.resolve(state)
+    // A normalized record has one identity shared by every group. Resolve its provider once,
+    // so a later reference cannot replace an earlier one with a newly created bookmark.
+    val restoredBookmarks = if (state.formatVersion >= 2) mutableMapOf<String, Bookmark?>() else null
     BookmarkStorageFormat.backupLegacy(project, state)
     synchronized(notifier) {
       restoreGeneration++
@@ -155,7 +158,7 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
         val original = group.name
         var suffix = 2
         while (!names.add(group.parentId to group.name)) group.name = "$original (${suffix++})"
-        saved.bookmarks.forEach { bookmark -> group.addLater(bookmark, bookmark.type, bookmark.description) }
+        saved.bookmarks.forEach { bookmark -> group.addLater(bookmark, bookmark.type, bookmark.description, restoredBookmarks) }
       }
       notifier.groupsSorted()
     }
@@ -839,12 +842,18 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
      * It is intended to restore bookmark state or to migrate old bookmarks and favorites.
      * Each bookmark is created separately that allows to wait for the end of indexing.
      */
-    internal fun addLater(context: Any, type: BookmarkType, description: String?) {
+    internal fun addLater(context: Any, type: BookmarkType, description: String?, restoredBookmarks: MutableMap<String, Bookmark?>? = null) {
       val generation = restoreGeneration
       pendingRestores.incrementAndGet()
       invoker.invokeLater {
         try {
-          val bookmark = if (generation == restoreGeneration) createBookmark(context) else null
+          val bookmark = if (generation != restoreGeneration) null
+          else if (restoredBookmarks != null && context is BookmarkState && context.id != null) synchronized(restoredBookmarks) {
+            val id = context.id!!
+            if (restoredBookmarks.containsKey(id)) restoredBookmarks[id]
+            else createBookmark(context).also { restoredBookmarks[id] = it }
+          }
+          else createBookmark(context)
           synchronized(notifier) {
             if (generation == restoreGeneration) {
               when (bookmark?.let { add(it, type, description, -1, true) }) {
