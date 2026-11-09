@@ -132,6 +132,15 @@ class BookmarkWorkspaceStore(private val project: Project) : PersistentStateComp
     data.reading.routes.add(copy(proposed))
   }
 
+  /** Order edits preserve the latest progress, even if it changed while the dialog was open. */
+  @Synchronized fun reorderRoute(state: ManagerState, groupId: String, order: List<String>) {
+    val ids = routeIds(state, groupId)
+    require(order.size == ids.size && order.toSet() == ids.toSet()) { "路线已变化，请重新调整顺序" }
+    val current = route(state, groupId)
+    current.order.clear(); current.order.addAll(order)
+    updateRoute(state, current)
+  }
+
   companion object {
     @JvmStatic fun getInstance(project: Project): BookmarkWorkspaceStore = project.getService(BookmarkWorkspaceStore::class.java)
     @JvmStatic fun <T : Any> copy(value: T): T = XmlSerializer.deserialize(XmlSerializer.serialize(value), value.javaClass)

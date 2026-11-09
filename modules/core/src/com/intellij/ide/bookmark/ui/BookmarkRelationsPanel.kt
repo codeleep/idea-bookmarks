@@ -15,8 +15,6 @@ import com.intellij.util.SingleAlarm
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.Dimension
-import java.awt.FlowLayout
-import java.awt.GridLayout
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.*
@@ -31,7 +29,9 @@ class BookmarkRelationsPanel(private val project: Project, private val manager: 
   private val add = JButton("新建关联…")
   private val edit = JButton("编辑关联…")
   private val delete = JButton("删除关联")
-  private val open = JButton("打开关联书签")
+  private val open = JButton("打开代码")
+  private val target = JButton("查看目标关联")
+  private val copyLink = JButton("复制当前书签链接")
   private var state: ManagerState? = null
   private var revision = -1L
   private var index: BookmarkSearchIndex? = null
@@ -51,7 +51,7 @@ class BookmarkRelationsPanel(private val project: Project, private val manager: 
     val records = index!!.search(search.text)
     sources.setListData(records.toTypedArray())
     if (records.isNotEmpty()) sources.selectedIndex = records.indexOfFirst { it.id == preferred }.coerceAtLeast(0)
-    summary.text = "${snapshot.bookmarks.size} 个书签，${snapshot.relations.size} 条关联；双击关联可跳转。"
+    summary.text = "${snapshot.bookmarks.size} 个书签 · ${snapshot.relations.size} 条关联"
     sources.emptyText.text = "没有匹配的书签"; sourceChanged()
   }
   private fun current() = !manager.isRestoringBookmarks() && revision == manager.stateModificationCount
@@ -60,6 +60,7 @@ class BookmarkRelationsPanel(private val project: Project, private val manager: 
     edges.setListData(state?.relations?.filter { it.sourceId == source || it.targetId == source }?.toTypedArray() ?: emptyArray())
     if (edges.model.size > 0) edges.selectedIndex = 0
     add.isEnabled = current() && source != null && (state?.bookmarks?.size ?: 0) > 1
+    copyLink.isEnabled = current() && source != null
     edges.emptyText.text = "该书签尚无关联"; edgeChanged()
   }
   private fun other(edge: BookmarkRelation): String = if (edge.sourceId == sources.selectedValue?.id) edge.targetId else edge.sourceId
@@ -67,6 +68,7 @@ class BookmarkRelationsPanel(private val project: Project, private val manager: 
   private fun edgeChanged() {
     val edge = edges.selectedValue
     edit.isEnabled = current() && edge != null; delete.isEnabled = edit.isEnabled; open.isEnabled = current() && edge != null
+    target.isEnabled = open.isEnabled
     details.text = edge?.let { "${label(it.sourceId)}\n  ${BookmarkRelations.KINDS[it.kind]} →\n${label(it.targetId)}\n\n${it.note}\n\n关联 ID：${it.id}" }.orEmpty()
     details.caretPosition = 0
   }
@@ -89,20 +91,28 @@ class BookmarkRelationsPanel(private val project: Project, private val manager: 
     if (!BookmarkNavigation.locate(project, manager, other(edge))) summary.text = "关联目标暂时无法跳转，请先巡检或启用对应提供器。"
   }
   override fun dispose() = Unit
+  internal fun toolWindowMenu() = JPopupMenu().apply {
+    add(BookmarkWorkbenchUi.item(edit)); add(BookmarkWorkbenchUi.item(delete))
+    addSeparator(); add(BookmarkWorkbenchUi.item(target)); add(BookmarkWorkbenchUi.item(copyLink))
+  }
   init {
     border = JBUI.Borders.empty(6)
-    add(JPanel(BorderLayout(0, JBUI.scale(6))).apply { add(search, BorderLayout.NORTH); add(summary, BorderLayout.SOUTH) }, BorderLayout.NORTH)
+    add(JPanel(BorderLayout(0, JBUI.scale(6))).apply {
+      add(BookmarkWorkbenchUi.heading(summary, BookmarkWorkbenchUi.refreshButton { refresh() }), BorderLayout.NORTH)
+      add(search, BorderLayout.SOUTH)
+    }, BorderLayout.NORTH)
     add(JSplitPane(JSplitPane.VERTICAL_SPLIT, ScrollPaneFactory.createScrollPane(sources),
       JSplitPane(JSplitPane.VERTICAL_SPLIT, ScrollPaneFactory.createScrollPane(edges), ScrollPaneFactory.createScrollPane(details)).apply { resizeWeight = 0.6 }).apply { resizeWeight = 0.45 }, BorderLayout.CENTER)
-    add(JPanel(GridLayout(0, 2, JBUI.scale(6), JBUI.scale(6))).apply {
-      add(add); add(edit); add(delete); add(open)
-      add(JButton("查看目标关联").apply { addActionListener { edges.selectedValue?.let { selectBookmark(other(it)) } } })
-      add(JButton("复制当前书签链接").apply { addActionListener {
-        sources.selectedValue?.id?.let { id ->
-          com.intellij.openapi.ide.CopyPasteManager.getInstance().setContents(java.awt.datatransfer.StringSelection(BookmarkLinks.url(id)))
-        }
-      } })
-    }, BorderLayout.SOUTH)
+    add(BookmarkWorkbenchUi.actions(add, open), BorderLayout.SOUTH)
+    target.addActionListener { edges.selectedValue?.let { selectBookmark(other(it)) } }
+    copyLink.addActionListener {
+      sources.selectedValue?.id?.let { id ->
+        com.intellij.openapi.ide.CopyPasteManager.getInstance().setContents(java.awt.datatransfer.StringSelection(BookmarkLinks.url(id)))
+      }
+    }
+    open.toolTipText = "打开所选关联另一端的代码；也可以双击关联"
+    edges.toolTipText = "双击跳转；右键或工具窗口右上角三个点菜单可管理关联"
+    BookmarkWorkbenchUi.installMenu(edges) { toolWindowMenu() }
     sources.selectionMode = ListSelectionModel.SINGLE_SELECTION; edges.selectionMode = ListSelectionModel.SINGLE_SELECTION
     sources.cellRenderer = DefaultListCellRenderer().let { renderer -> ListCellRenderer { component, value, row, selected, focus ->
       renderer.getListCellRendererComponent(component, "${value.location} · ${value.snippet(search.text)}", row, selected, focus)

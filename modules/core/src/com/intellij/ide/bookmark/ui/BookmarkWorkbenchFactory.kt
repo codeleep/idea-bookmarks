@@ -3,12 +3,18 @@ package com.intellij.ide.bookmark.ui
 import com.intellij.ide.bookmark.BookmarksManager
 import com.intellij.ide.bookmark.BookmarksManagerImpl
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.wm.ex.ToolWindowEx
 import java.awt.BorderLayout
 import javax.swing.JPanel
 import javax.swing.JTabbedPane
@@ -18,6 +24,10 @@ class BookmarkWorkbenchFactory : ToolWindowFactory, DumbAware {
     val manager = BookmarksManager.getInstance(project) as? BookmarksManagerImpl ?: return
     val panel = BookmarkWorkbenchPanel(project, manager)
     toolWindow.contentManager.addContent(toolWindow.contentManager.factory.createContent(panel, null, false).apply { setDisposer(panel) })
+    if (toolWindow is ToolWindowEx) toolWindow.setAdditionalGearActions(object : ActionGroup(), DumbAware {
+      override fun getActionUpdateThread() = ActionUpdateThread.EDT
+      override fun getChildren(event: AnActionEvent?): Array<AnAction> = panel.menuActions()
+    })
   }
 
   companion object {
@@ -36,7 +46,10 @@ class BookmarkWorkbenchPanel(project: Project, manager: BookmarksManagerImpl) : 
   val impact = BookmarkImpactPanel(project, manager) { entries ->
     reader.updateImpacts(entries.associateBy { it.id })
     val count = entries.count { it.status in setOf(com.intellij.ide.bookmark.BookmarkImpact.Status.CHANGED, com.intellij.ide.bookmark.BookmarkImpact.Status.MOVED) }
-    if (tabs.tabCount >= 2) tabs.setTitleAt(1, if (count == 0) "变更影响" else "变更影响（$count 待复核）")
+    if (tabs.tabCount >= 2) {
+      tabs.setTitleAt(1, if (count == 0) "变更影响" else "变更影响 ($count)")
+      tabs.setToolTipTextAt(1, "按文件比较源码；$count 个书签待复核")
+    }
   }
   init {
     tabs.addTab("阅读路线", reader); tabs.addTab("变更影响", impact); tabs.addTab("书签关联", relations)
@@ -50,6 +63,14 @@ class BookmarkWorkbenchPanel(project: Project, manager: BookmarksManagerImpl) : 
       1 -> impact.selectBookmark(bookmarkId)
       2 -> relations.selectBookmark(bookmarkId)
     }
+  }
+  fun menuActions(): Array<AnAction> {
+    val menu = when (tabs.selectedIndex) {
+      1 -> impact.toolWindowMenu()
+      2 -> relations.toolWindowMenu()
+      else -> reader.toolWindowMenu()
+    }
+    return arrayOf<AnAction>(Separator.create(tabs.getTitleAt(tabs.selectedIndex))) + BookmarkWorkbenchUi.menuActions(menu)
   }
   override fun dispose() = Unit
 }

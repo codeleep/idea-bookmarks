@@ -1,0 +1,59 @@
+{
+  "result": "PASS_WITH_UI_AUTOMATION_LIMIT",
+  "date": "2026-11-09",
+  "timezone": "Asia/Shanghai",
+  "sdkVersion": "2026.2.4",
+  "sdkBuild": "262.11879.100",
+  "pluginVersion": "262.11879.100.11",
+  "archiveSha256": "a7a280c606b2d246fb20da6ca392998f25eccb242fe4b34c5aa1a542da346ed3",
+  "ideInstallationModified": false,
+  "businessProjectsModified": false,
+  "guiChecks": [
+    "actual docked reader retains prior route order and 1/2 progress",
+    "three permanent reader actions separate navigation from ordering",
+    "route order dialog moves steps in preview only",
+    "Cancel preserves original order, current bookmark and 1/2 progress",
+    "Apply changes only reading order while retaining current bookmark and 1/2 progress",
+    "previous and next navigate to source lines 2 and 3 without reordering",
+    "final package removes all custom More buttons from content and main toolbar",
+    "four installed JARs match final package bytes",
+    "actual project reopen retains applied order, descriptions, memberships and progress",
+    "clean shutdown preserves complete canonical format3 state, source baselines and fixture source bytes"
+  ],
+  "nativeRuntimeChecks": [
+    "340 logical pixel panels keep primary buttons within their usable dimensions for all three tabs",
+    "four primary bookmark toolbar actions; secondary actions included in native gear menu without a nested popup wrapper",
+    "native workbench extension actions follow reading, impact and relation pages",
+    "route reordering preserves latest progress and rejects missing or duplicate steps before writing"
+  ],
+  "phases": [
+    {
+      "archiveSha256": "cae3709e2fecb1630ebed83c669a1fa02fd37ebe35c52ead04bf9dd4e40e2b3a",
+      "scope": "route dialog Cancel/Apply and navigation were exercised before the final native-gear relocation; the route-order dialog and store logic are unchanged"
+    },
+    {
+      "archiveSha256": "a7a280c606b2d246fb20da6ca392998f25eccb242fe4b34c5aa1a542da346ed3",
+      "scope": "final native-gear registration/page scope verified in installed IDE runtime; GUI layout and persistence inspected after actual process restart"
+    }
+  ],
+  "uiAutomationLimit": "CUA could not reliably activate/capture the auto-hidden native title-bar options popup (including a timeout; IDE event thread remained idle and latest log had no errors). Native popup item placement and page scope are asserted through the installed SDK action model; full physical popup-click coverage is not claimed.",
+  "storage": {
+    "canonicalBookmarks": 4,
+    "groups": 3,
+    "relations": 1,
+    "originalCanonicalStateRetained": true,
+    "sourceBaselinesRetained": true,
+    "fixtureSourceBytesRetained": true,
+    "exactLocations": {
+      "checkedLineBookmarks": 2,
+      "checkedTextAnchors": 2,
+      "lineBookmarksWithoutText": 0,
+      "skippedFileBookmarks": 2,
+      "skippedOtherProviders": 0,
+      "skippedNonLocalBookmarks": 0,
+      "source": "working-tree"
+    }
+  },
+  "finalGuiProcessErrors": 0,
+  "noTagOrReleaseCreated": true
+}
