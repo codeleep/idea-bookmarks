@@ -110,6 +110,10 @@ public final class BookmarkSourceNavigationSmoke {
       edt(()->result.set(BookmarkSourceNavigation.add(project,manager,manager.captureForExchange(),manager.getStateModificationCount(),List.of(usagePoint.get()),target,null)));
       restored(manager);
       check(manager.getBookmarks().stream().allMatch(Bookmark::canNavigate),"indented usage anchors with trailing tabs also import as valid native bookmarks");
+      // Opening this editor can enqueue another native indexing pass on a fresh Linux profile.
+      edt(()->com.intellij.openapi.fileEditor.FileEditorManager.getInstance(project).openTextEditor(
+        new com.intellij.openapi.fileEditor.OpenFileDescriptor(project,Objects.requireNonNull(LocalFileSystem.getInstance().findFileByNioFile(path.resolve("src/Client.java")))),false));
+      awaitIndexes(project);
       edt(()->{
         var symbols=BookmarkSourceNavigation.bookmarkSymbols(project,manager,result.get().getIds().getFirst());
         check(symbols.size()>=2&&symbols.stream().anyMatch(s->s.getContext().getData(CommonDataKeys.PSI_ELEMENT) instanceof PsiMethod),"a call line exposes receiver and method as distinct native symbol choices");

@@ -6,8 +6,9 @@
   "fixture": "build/source-navigation-ui/project",
   "automatedRuntime": {
     "result": "PASS",
-    "checks": 419,
-    "report": "runtime-validation.json"
+    "checks": 420,
+    "report": "runtime-validation.json",
+    "archiveSha256": "8c2c84fded7e57ca3daf3e6546970f20a23d1f41f82bdd46b2b0dd67c4b5698c"
   },
   "gui": {
     "isolatedOfficialIde": [
@@ -37,7 +38,8 @@
       "status": "STRUCTURE_VERIFIED",
       "limit": "Physical popup interaction is not yet verified on the normal host",
       "userFeedback": "User reported normal behavior after following the manual acceptance guide; automated physical-popup capture remains incomplete."
-    }
+    },
+    "indexingProtection": "Source actions show an indexing-in-progress message if native PSI resolution races with a new indexing pass. The normal-host GUI evidence above belongs to the earlier archive recorded at the top level."
   },
   "dataProtection": {
     "businessSourceEdited": false,

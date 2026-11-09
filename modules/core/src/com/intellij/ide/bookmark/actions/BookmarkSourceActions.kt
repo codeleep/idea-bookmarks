@@ -80,7 +80,10 @@ object BookmarkSourceMenus {
     if (!available(project, bookmark, operation)) {
       Messages.showInfoMessage(project, "宿主 IDEA 尚未启用这项原生功能。Java／Kotlin 类图需要对应的 Diagrams 模块及可用授权。", "源码分析"); return
     }
-    val symbols = BookmarkSourceNavigation.bookmarkSymbols(project, manager, id)
+    val symbols = try { BookmarkSourceNavigation.bookmarkSymbols(project, manager, id) }
+    catch (_: com.intellij.openapi.project.IndexNotReadyException) {
+      Messages.showInfoMessage(project, "IDEA 正在更新索引，请完成后重新分析。", "源码分析"); return
+    }
     val revision = manager.stateModificationCount
     val action = ActionManager.getInstance().getAction(operation.actionId)
     if (symbols.isEmpty() || action == null) {
@@ -132,6 +135,8 @@ class AddSourceResultsToBookmarksAction : DumbAwareAction("加入书签／阅读
         Messages.showInfoMessage(project, "请选择具体的本地源码结果；目录、分组及反编译库文件不能作为行书签加入。", "加入书签"); return
       }
       BookmarkSourceResultsDialog(project, manager, selected).show()
+    } catch (_: com.intellij.openapi.project.IndexNotReadyException) {
+      Messages.showInfoMessage(project, "IDEA 正在更新索引，请完成后重新选择查询结果。", "加入书签")
     } catch (error: IllegalArgumentException) { Messages.showErrorDialog(project, error.localizedMessage.orEmpty(), "加入书签") }
   }
 }
