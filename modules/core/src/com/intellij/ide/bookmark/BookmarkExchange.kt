@@ -35,6 +35,7 @@ object BookmarkExchange {
 
   @JvmStatic fun copy(state: ManagerState): ManagerState = ManagerState().also { result ->
     result.formatVersion = state.formatVersion
+    state.relations.mapTo(result.relations, BookmarkStorageFormat::copyRelation)
     state.bookmarks.mapTo(result.bookmarks) { saved -> BookmarkState().also {
       it.id = saved.id; it.provider = saved.provider; it.description = saved.description; it.type = saved.type
       it.attributes.putAll(saved.attributes)
@@ -64,6 +65,7 @@ object BookmarkExchange {
       }
       val used = result.groups.flatMap { it.bookmarkIds }.toSet()
       result.bookmarks.removeIf { it.id !in used }
+      result.relations.removeIf { it.sourceId !in used || it.targetId !in used }
     }
     validate(result)
     return result
@@ -90,6 +92,9 @@ object BookmarkExchange {
     validate(state)
     val document = buildJsonObject {
       put("formatVersion", BookmarkStorageFormat.VERSION)
+      putJsonArray("relations") { state.relations.forEach { edge -> add(buildJsonObject {
+        put("id", edge.id); put("sourceId", edge.sourceId); put("targetId", edge.targetId); put("kind", edge.kind); put("note", edge.note)
+      }) } }
       putJsonArray("bookmarks") { state.bookmarks.forEach { saved -> add(buildJsonObject {
         put("id", saved.id); put("provider", saved.provider); put("type", saved.type.name)
         put("descriptionMarkdown", saved.description?.let(::JsonPrimitive) ?: JsonNull)
@@ -116,8 +121,10 @@ object BookmarkExchange {
   @JvmStatic fun fromJson(text: String, projectBase: Path?): ManagerState {
     require(text.toByteArray(StandardCharsets.UTF_8).size <= MAX_BYTES) { "JSON 文件不能超过 10 MiB" }
     checkJsonKeys(text) // The standard parser accepts duplicate keys; reject them before decoding.
-    val document = json.parseToJsonElement(text).obj(setOf("formatVersion", "bookmarks", "groups"), setOf("_source"))
-    require(document.getValue("formatVersion").toString() == "2") { "仅支持 formatVersion = 2" }
+    val document = json.parseToJsonElement(text).obj(setOf("formatVersion", "bookmarks", "groups"), setOf("_source", "relations"))
+    val version = document.getValue("formatVersion").toString()
+    require(version in setOf("2", "3")) { "仅支持 formatVersion = 2 或 3" }
+    require(version == "3" || "relations" !in document) { "关联关系需要 formatVersion = 3" }
     val result = ManagerState().apply { formatVersion = BookmarkStorageFormat.VERSION }
     val bookmarks = document.getValue("bookmarks").array()
     val groups = document.getValue("groups").array()
@@ -140,6 +147,13 @@ object BookmarkExchange {
         require(default.toString() in setOf("true", "false")) { "isDefault 必须是布尔值" }
         isDefault = default.toString() == "true"
         value.getValue("bookmarkIds").array().mapTo(bookmarkIds) { it.text() }
+      })
+    }
+    document["relations"]?.array()?.forEach { item ->
+      val edge = item.obj(setOf("id", "sourceId", "targetId", "kind", "note"))
+      result.relations.add(BookmarkRelation().apply {
+        id = edge.getValue("id").text(); sourceId = edge.getValue("sourceId").text(); targetId = edge.getValue("targetId").text()
+        kind = edge.getValue("kind").text(); note = edge.getValue("note").text()
       })
     }
     validate(result)
@@ -197,14 +211,15 @@ object BookmarkExchange {
     if (bookmark.provider == LINE_PROVIDER) mapOf("url" to bookmark.attributes["url"].orEmpty(), "line" to (bookmark.attributes["line"]?.toIntOrNull() ?: -1).toString())
     else bookmark.attributes.filterKeys { it != "lineText" }
 
-  class Plan(val state: ManagerState, val changes: List<String>, val descriptionConflicts: Int)
+  class Plan(val state: ManagerState, val changes: List<String>, val descriptionConflicts: Int, val relationConflicts: Int)
 
   /** Merge never deletes/moves existing groups or removes their references. */
   @JvmStatic fun plan(current: ManagerState, incoming: ManagerState, replace: Boolean, preferImported: Boolean): Plan {
     validate(current); validate(incoming)
-    val result = if (replace) copy(incoming) else copy(current)
+    val result = (if (replace) copy(incoming) else copy(current)).apply { formatVersion = BookmarkStorageFormat.VERSION }
     val changes = mutableListOf<String>()
     var conflicts = 0
+    var relationConflicts = 0
     if (replace) {
       changes.add("替换当前上下文：现有 ${current.groups.size} 个分组、${current.bookmarks.size} 个书签 → 导入 ${incoming.groups.size} 个分组、${incoming.bookmarks.size} 个书签。")
       changes.add("当前内容会先自动备份；其他 Git 分支的已保存快照不变。")
@@ -214,17 +229,19 @@ object BookmarkExchange {
       val bookmarkIds = result.bookmarks.mapTo(mutableSetOf()) { it.id!! }
       val types = result.bookmarks.mapTo(mutableSetOf()) { it.type }
       val remap = mutableMapOf<String, String>()
+      val importedDescriptions = mutableSetOf<String>()
       incoming.bookmarks.forEach { source ->
         val existing = records[location(source)]
         if (existing != null) {
           remap[source.id!!] = existing.id!!
+          if (preferImported && source.description != null && source.description == existing.description) importedDescriptions.add(existing.id!!)
           if (existing.description != source.description && source.description != null) {
             if (existing.description.isNullOrEmpty()) {
-              existing.description = source.description; changes.add("补充描述：${label(source)}")
+              existing.description = source.description; importedDescriptions.add(existing.id!!); changes.add("补充描述：${label(source)}")
             }
             else {
               conflicts++
-              if (preferImported) existing.description = source.description
+              if (preferImported) { existing.description = source.description; importedDescriptions.add(existing.id!!) }
               changes.add("描述冲突（${if (preferImported) "采用导入" else "保留现有"}）：${label(source)}")
             }
           }
@@ -238,8 +255,14 @@ object BookmarkExchange {
             changes.add("快捷标记 ${saved.type} 已占用，导入为普通书签：${label(source)}"); saved.type = BookmarkType.DEFAULT
           }
           types.add(saved.type); result.bookmarks.add(saved); records[location(saved)] = saved; remap[source.id!!] = saved.id!!
+          importedDescriptions.add(saved.id!!)
           changes.add("新增书签：${label(source)}")
         }
+      }
+      result.bookmarks.filter { it.id in importedDescriptions }.forEach { saved ->
+        val before = saved.description
+        saved.description = before?.let { BookmarkLinks.remap(it, remap) }
+        if (saved.description != before) changes.add("更新描述中的书签链接：${label(saved)}")
       }
       val groupIds = result.groups.mapTo(mutableSetOf()) { it.id!! }
       val recordsById = result.bookmarks.associateBy { it.id }
@@ -266,10 +289,35 @@ object BookmarkExchange {
           waiting.remove(source)
         }
       }
+      incoming.relations.forEach { original ->
+        val edge = BookmarkStorageFormat.copyRelation(original).apply {
+          sourceId = remap.getValue(original.sourceId); targetId = remap.getValue(original.targetId)
+        }
+        if (edge.sourceId == edge.targetId) changes.add("合并后关联两端为同一书签，跳过关联：${edge.id}")
+        else {
+          val existing = result.relations.firstOrNull { BookmarkRelations.key(it) == BookmarkRelations.key(edge) }
+          if (existing != null) {
+            if (existing.note != edge.note) {
+              if (existing.note.isEmpty()) {
+                existing.note = edge.note; changes.add("补充关联说明：${edge.id}")
+              }
+              else {
+                relationConflicts++
+                if (preferImported) existing.note = edge.note
+                changes.add("关联说明冲突（${if (preferImported) "采用导入" else "保留现有"}）：${edge.id}")
+              }
+            }
+          }
+          else {
+            if (result.relations.any { it.id == edge.id }) edge.id = UUID.randomUUID().toString()
+            result.relations.add(edge); changes.add("新增关联：${edge.sourceId} → ${edge.targetId}（${BookmarkRelations.KINDS[edge.kind]}）")
+          }
+        }
+      }
     }
     validate(result)
     if (changes.isEmpty()) changes.add("没有需要修改的内容。")
-    return Plan(result, changes, conflicts)
+    return Plan(result, changes, conflicts, relationConflicts)
   }
 
   private fun groupPath(state: ManagerState, group: GroupState): String {
@@ -318,6 +366,15 @@ object BookmarkExchange {
           append("\n\n")
           if (!saved.description.isNullOrEmpty()) append(saved.description).append("\n\n")
           else append("（暂无描述）\n\n")
+        }
+      }
+      if (state.relations.isNotEmpty()) {
+        append("## 书签关联\n\n")
+        state.relations.forEach { edge ->
+          append("- ").append(escape(label(byId.getValue(edge.sourceId)))).append(" → ")
+            .append(escape(label(byId.getValue(edge.targetId)))).append("（").append(BookmarkRelations.KINDS[edge.kind]).append("）")
+          if (edge.note.isNotEmpty()) append("：").append(escape(edge.note))
+          append('\n')
         }
       }
     }

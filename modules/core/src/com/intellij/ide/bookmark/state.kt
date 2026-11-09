@@ -13,6 +13,17 @@ class ManagerState {
 
   @get:XCollection
   val groups: MutableList<GroupState> = mutableListOf()
+
+  @get:XCollection
+  val relations: MutableList<BookmarkRelation> = mutableListOf()
+}
+
+class BookmarkRelation {
+  var id: String = ""
+  var sourceId: String = ""
+  var targetId: String = ""
+  var kind: String = "RELATED"
+  var note: String = ""
 }
 
 

@@ -109,6 +109,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
       await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_A) != null, "original bookmark state restored");
       BreakpointActionsSmoke.verify(project, file, manager);
       BookmarkWorkflowsSmoke.verify(project, manager);
+      BookmarkWorkbenchSmoke.verify(project, manager);
       edt(BookmarkSmokeStarter::hierarchyAndMarkdown);
       await(() -> !manager.isRestoringBookmarks() && manager.getBookmark(BookmarkType.LETTER_B) != null, "nested bookmark restored from XML");
       edt(BookmarkSmokeStarter::verifyHierarchyAndTree);
@@ -237,6 +238,9 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
         manager.getGroupById("ai-root").setName("AI 根组");
       });
       edt(() -> BookmarkWorkflowsSmoke.prepareRestart(project, manager));
+      edt(() -> BookmarkWorkbenchSmoke.prepareRestart(project, manager, file));
+      await(() -> !manager.isRestoringBookmarks(), "relation fixture restoration completes before saving the project");
+      edt(() -> BookmarkWorkbenchSmoke.prepareReviewRestart(project, manager));
       com.intellij.configurationStore.StoreUtil.saveSettings(project, true);
       Path persisted = root.resolve("project/.idea/bookmarks.xml");
       await(() -> Files.isRegularFile(persisted), "new state saved to project bookmarks.xml");
@@ -388,7 +392,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     check(markdown.contains("项目\\[中文\\]"), "Markdown generated titles escape formatting characters");
     var withSource = text.replaceFirst("\\{", "{\"_source\":{\"kind\":\"project\"},");
     check(BookmarkExchange.fromJson(withSource, base).getGroups().size() == 2, "IDE accepts version-2 AI interchange metadata without applying source-path locks");
-    reject(() -> BookmarkExchange.fromJson(text.replace("\"formatVersion\": 2", "\"formatVersion\": 99"), base), "unknown JSON version rejected");
+    reject(() -> BookmarkExchange.fromJson(text.replace("\"formatVersion\": " + BookmarkStorageFormat.VERSION, "\"formatVersion\": 99"), base), "unknown JSON version rejected");
     reject(() -> BookmarkExchange.fromJson(text.replaceFirst("\\{", "{\"unknown\":true,"), base), "unknown JSON fields rejected");
     reject(() -> BookmarkExchange.fromJson(text.replaceFirst("\\{", "{\"formatVersion\":2,"), base), "duplicate JSON keys rejected");
     reject(() -> BookmarkExchange.fromJson("{\"format\\u0056ersion\":2," + text.substring(1), base), "escaped duplicate JSON keys rejected");
@@ -592,7 +596,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     manager.setBookmarkGroups(bookmark, List.of(root, child, other));
     var id = manager.getBookmarkId(bookmark);
     var state = manager.getState();
-    check(state.getFormatVersion() == 2 && state.getBookmarks().size() == 1, "normalized store contains one canonical bookmark");
+    check(state.getFormatVersion() == BookmarkStorageFormat.VERSION && state.getBookmarks().size() == 1, "normalized store contains one canonical bookmark");
     check(state.getGroups().stream().allMatch(g -> g.getBookmarks().isEmpty() && g.getBookmarkIds().equals(List.of(id))), "groups persist ordered references without description copies");
     check(MARKDOWN.equals(state.getBookmarks().getFirst().getDescription()), "canonical Markdown stored exactly once");
     var moved = LineBookmarkProvider.Util.find(project).createBookmark(file, 0);
@@ -666,6 +670,7 @@ public final class BookmarkSmokeStarter implements ApplicationStarter {
     edt(() -> {
       check(manager.getGroups(manager.getBookmark(BookmarkType.LETTER_Z)).size() == 2, "fresh IDE preserves two canonical references");
       BookmarkWorkflowsSmoke.verifyRestart(project, manager);
+      BookmarkWorkbenchSmoke.verifyRestart(project, manager);
       check(manager.getParentGroup(manager.getGroupById("ai-child")) == manager.getGroupById("ai-root"), "fresh IDE preserves project group hierarchy");
       check(WorkingContextManager.getInstance(project).loadContext("__branch_context_validation-a"), "fresh IDE reads AI-edited original branch archive");
     });

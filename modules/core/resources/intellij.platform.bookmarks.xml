@@ -47,6 +47,8 @@
 
     <toolWindow id="Bookmarks" anchor="left" icon="AllIcons.Toolwindows.ToolWindowBookmarks" secondary="true"
                 factoryClass="com.intellij.ide.bookmark.ui.BookmarksViewFactory" order="after Structure"/>
+    <toolWindow id="书签阅读工作台" anchor="right" icon="AllIcons.Toolwindows.ToolWindowBookmarks"
+                factoryClass="com.intellij.ide.bookmark.ui.BookmarkWorkbenchFactory"/>
     <toolWindowExtractorMode id="Bookmarks" mode="per_client"/>
 
     <editorFactoryListener implementation="com.intellij.ide.bookmark.GutterLineBookmarkUpdater"/>
@@ -166,6 +168,9 @@
       <group id="Bookmarks.ToolWindow.PopupMenu">
         <action id="Bookmarks.Inspect" class="com.intellij.ide.bookmark.actions.InspectBookmarksAction" icon="AllIcons.Actions.Checked"/>
         <action id="Bookmarks.ReadingRoute" class="com.intellij.ide.bookmark.actions.ReadBookmarkRouteAction" icon="AllIcons.Actions.NextOccurence"/>
+        <action id="Bookmarks.SourceImpact" class="com.intellij.ide.bookmark.actions.ShowBookmarkImpactAction"/>
+        <action id="Bookmarks.Relations" class="com.intellij.ide.bookmark.actions.ShowBookmarkRelationsAction"/>
+        <action id="Bookmarks.CopyLink" class="com.intellij.ide.bookmark.actions.CopyBookmarkLinkAction"/>
         <separator/>
         <reference ref="Bookmarks.Exchange"/>
         <separator/>

@@ -8,9 +8,13 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.util.UUID
 
-/** Version 2 stores each bookmark once; groups contain ordered references only. */
+/** Version 3 adds typed ID-based relations to the normalized version-2 records. */
 object BookmarkStorageFormat {
-  const val VERSION = 2
+  const val VERSION = 3
+
+  @JvmStatic fun copyRelation(source: BookmarkRelation) = BookmarkRelation().also {
+    it.id = source.id; it.sourceId = source.sourceId; it.targetId = source.targetId; it.kind = source.kind; it.note = source.note
+  }
 
   private fun copyBookmark(source: BookmarkState) = BookmarkState().also {
     it.id = source.id
@@ -29,9 +33,9 @@ object BookmarkStorageFormat {
 
   @JvmStatic
   fun normalize(legacy: ManagerState): ManagerState {
-    if (legacy.formatVersion == VERSION) {
+    if (legacy.formatVersion in 2..VERSION) {
       validate(legacy)
-      return legacy
+      return if (legacy.formatVersion == VERSION) legacy else BookmarkExchange.copy(legacy).apply { formatVersion = VERSION }
     }
     require(legacy.formatVersion == 0) { "Unsupported bookmark format: ${legacy.formatVersion}" }
     val result = ManagerState().apply { formatVersion = VERSION }
@@ -64,6 +68,7 @@ object BookmarkStorageFormat {
     validate(state) // Reject an invalid new document before touching the live model.
     val records = state.bookmarks.associateBy { it.id }
     return ManagerState().also { result ->
+      state.relations.mapTo(result.relations, ::copyRelation)
       state.groups.forEach { group ->
         result.groups.add(copyGroup(group).apply {
           group.bookmarkIds.forEach { id -> bookmarks.add(copyBookmark(records.getValue(id))) }
@@ -74,7 +79,8 @@ object BookmarkStorageFormat {
 
   @JvmStatic
   fun validate(state: ManagerState) {
-    require(state.formatVersion == VERSION) { "Unsupported bookmark format: ${state.formatVersion}" }
+    require(state.formatVersion in 2..VERSION) { "Unsupported bookmark format: ${state.formatVersion}" }
+    require(state.formatVersion == VERSION || state.relations.isEmpty()) { "Relations require formatVersion = 3" }
     val groups = state.groups.associateBy { it.id }
     val records = state.bookmarks.associateBy { it.id }
     require(groups.size == state.groups.size && groups.keys.all { !it.isNullOrBlank() }) { "Group IDs must be nonempty and unique" }
@@ -104,12 +110,13 @@ object BookmarkStorageFormat {
       require(locations.add(bookmark.provider to bookmark.attributes.filterKeys { it != "lineText" })) { "Duplicate bookmark location; reuse its ID" }
       bookmark.attributes["line"]?.let { require(it.toIntOrNull()?.let { value -> value >= -1 } == true) { "Line must be zero-based, or -1 for a file" } }
     }
+    BookmarkRelations.validate(state)
   }
 
   internal fun backupLegacy(project: Project, state: ManagerState) {
-    if (state.formatVersion != 0 || state.groups.isEmpty()) return
+    if (state.formatVersion !in setOf(0, 2) || state.groups.isEmpty()) return
     val base = project.basePath ?: return
-    val path = Path.of(base, ".idea", "bookmarks-legacy-backup.xml")
+    val path = Path.of(base, ".idea", if (state.formatVersion == 2) "bookmarks-format2-backup.xml" else "bookmarks-legacy-backup.xml")
     if (Files.exists(path)) return
     Files.createDirectories(path.parent)
     val text = JDOMUtil.write(XmlSerializer.serialize(state))

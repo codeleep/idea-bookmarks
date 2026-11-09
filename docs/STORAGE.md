@@ -2,7 +2,7 @@
 
 ## 1. 设计与范围
 
-从插件 `262.11879.100.4` 开始，当前项目使用 **格式版本 2**：书签独立保存，分组通过 ID 引用书签，Markdown 描述保存在书签记录中。Git 分支切换继续使用 IDEA 原有的任务上下文机制。
+插件 `262.11879.100.10` 使用 **格式版本 3**：保留 `.4` 引入的独立书签表、共享描述和树形分组引用，增加独立关联表。读取格式 2 后保留全部 ID 并升级保存；Git 分支切换继续使用 IDEA 原有任务上下文机制。
 
 这次改造对应以下设计要求。
 
@@ -11,8 +11,9 @@
 | 书签 | `id`、`provider`、`attributes`、`type`、`description` | 同一位置保存一条记录；描述只保存一份 |
 | 分组 | `id`、`parentId`、`name`、`default`、`bookmarkIds` | 用父 ID 组成树；引用数组决定组内书签顺序 |
 | 多组归属 | 各组的 `bookmarkIds` 指向同一个书签 ID | 允许跨组引用；同一组不得重复引用 |
-| Git 分支快照 | 一份完整的 `ManagerState` | 使用原有上下文名称、归档与恢复开关 |
-| 格式版本 | `formatVersion = 2` | 新格式严格校验；旧格式走兼容迁移 |
+| 书签关联 | `id`、`sourceId`、`targetId`、`kind`、`note` | 两端引用稳定书签 ID，独立于分组归属 |
+| Git 分支快照 | `ManagerState` 和个人 `BookmarkReadingState` | 使用原有上下文名称、归档与恢复开关 |
+| 格式版本 | `formatVersion = 3` | 新格式严格校验；旧格式走兼容迁移 |
 
 描述不再嵌在每个组的书签副本中。书签行号变化时保留书签 ID；分组改名和移动时保留分组 ID。多个组共享当前上下文中的描述；不同 Git 分支快照分别保存自己的描述内容。
 
@@ -24,6 +25,7 @@
 |---|---|---|
 | 当前项目书签 | `<项目目录>/.idea/bookmarks.xml` | IDEA `PersistentStateComponent` |
 | 旧状态迁移来源 | 原 `PRODUCT_WORKSPACE_FILE` 中的 `BookmarksManager` | IDEA 的 deprecated storage 迁移 |
+| 首份格式 2 备份 | `<项目目录>/.idea/bookmarks-format2-backup.xml` | 首次升级创建，不覆盖 |
 | 首份旧数据备份 | `<项目目录>/.idea/bookmarks-legacy-backup.xml` | 插件创建一次，不覆盖 |
 | Git 分支上下文归档 | `<IDE配置目录>/tasks/<实际项目归档名>.contexts.zip` | IDEA `WorkingContextManager` |
 | AI 工具写入前备份 | 目标文件旁 `bookmarks-backups/` | AI 工具按原文件 SHA-256 保留 |
@@ -40,7 +42,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="BookmarksManager">
-    <option name="formatVersion" value="2" />
+    <option name="formatVersion" value="3" />
     <option name="bookmarks">
       <BookmarkState>
         <option name="id" value="bookmark-1" />
@@ -67,6 +69,7 @@
         <option name="bookmarkIds"><option value="bookmark-1" /></option>
       </GroupState>
     </option>
+    <option name="relations" />
   </component>
 </project>
 ```
@@ -76,6 +79,14 @@
 `type` 为 `DEFAULT`、`LETTER_A` 至 `LETTER_Z` 或 `DIGIT_0` 至 `DIGIT_9`。非默认助记符在当前快照中唯一。未识别的 provider 记录会保留在存储中，避免暂时缺少适配器时丢失数据。
 
 父组和子组的归属独立，树形层级不隐含书签引用。父组引用一个书签，不等于它的子组也引用该书签。
+
+关联表中的每条边只保存一次。JSON 中的相同关系使用下列形状；`RELATED` 是双向，其余类型从 `sourceId` 指向 `targetId`。
+
+```json
+{"id":"edge-1","sourceId":"bookmark-1","targetId":"bookmark-2","kind":"CALLS","note":"入口调用下一阶段。"}
+```
+
+关联端点必须存在、不同，边 ID 唯一且非空。同一对端点与类型不得重复，`RELATED` 的反向也算重复；图可以成环。最多 50000 条关系，每条说明最多 10000 个 UTF-16 字符。类型为 `CALLS`、`IMPLEMENTS`、`DESIGN` 或 `RELATED`，未知值拒绝导入。
 
 ## 4. 复用原有分支机制
 
@@ -91,11 +102,11 @@ sequenceDiagram
     Git->>Tracker: branchWillChange(原分支)
     Tracker->>Context: 保存 __branch_context_原分支
     Context->>Adapter: saveContext
-    Adapter->>Model: 获取格式 2 完整快照
+    Adapter->>Model: 获取格式 3 完整快照
     Git->>Tracker: branchHasChanged(目标分支)
     Tracker->>Context: 清空并加载已有目标上下文
     Context->>Adapter: clearContext / loadContext
-    Adapter->>Model: 校验并恢复书签表、分组树与引用
+    Adapter->>Model: 校验并恢复书签、分组、引用与关联
 ```
 
 适配器继续使用上下文 ID `bookmarks` 和开关 `tasks.enable.bookmark.context.on.branch.switch`。它替换内置的书签适配器，避免原适配器按组名恢复时把树形结构展开；实际只注册一个 `bookmarks` 上下文适配器。插件要求重启后启用，切换监听器、任务管理器、归档格式与上下文名称均由官方 IDEA 提供。
@@ -114,13 +125,13 @@ sequenceDiagram
 
 ## 5. 迁移、校验与删除
 
-旧状态没有 `formatVersion`，书签保存在 `GroupState.bookmarks` 中。平台先读取旧 storage，插件备份原组件状态，再使用现有迁移逻辑恢复；下次保存写入格式 2。旧分支归档同样可由升级后的适配器读取。旧数据里不同组的不同描述会合并保留原文；一致的描述保持原样。
+旧状态没有 `formatVersion`，书签保存在 `GroupState.bookmarks` 中。平台先读取旧 storage，插件备份原组件状态，再使用现有迁移逻辑恢复；下次保存写入格式 3。格式 2 在清空模型前校验，备份原状态，再复制升级；不重建书签 ID。旧分支归档同样可由升级后的适配器读取。旧数据里不同组的不同描述会合并保留原文；一致的描述保持原样。
 
 新格式在清空当前模型之前校验。以下数据会被拒绝：未知版本、重复或空 ID、缺失父组、分组环、同级重名、重复组内引用、悬空引用、无任何组引用的书签、重复位置及助记符冲突。原数据修复逻辑只用于旧格式，新格式不通过静默改名或移到根组来掩盖错误。
 
-删除规则与界面一致：有多个组引用时选择移除当前引用或删除所有引用；只有一个组引用时直接删除。AI 操作数据时，移除最后一个引用必须同时移除书签表中的对应记录；删除一棵分组子树时，只清理失去全部引用的书签。
+删除规则与界面一致：有多个组引用时选择移除当前引用或删除所有引用；只有一个组引用时直接删除。AI 操作数据时，移除最后一个引用必须同时移除书签记录及连接它的关联；删除分组子树时，只清理失去全部引用的书签及相连关系。归并重复书签还要把关系端点重映射到保留 ID，清理自关联、合并重复边并保留有效说明。
 
-降级到旧版插件前应保留新文件、原状态备份和上下文归档。旧版适配器不能按新引用结构完整恢复树形分组；卸载用户插件后，内置旧版也不会自动读取新的 `.idea/bookmarks.xml`。
+格式 3 不能交给 `.9` 及更早的格式 2 插件／工具写回；它们不识别关联。降级前保留完整格式 3 备份、原状态备份、workspace 和上下文归档；需要格式 2 时只能另外制作明确去除关联的数据副本，不能把版本号直接改为 2 并保留关系。旧版适配器不能按新引用结构完整恢复树形分组；卸载用户插件后，内置旧版也不会自动读取新的 `.idea/bookmarks.xml`。
 
 ## 6. 源码与验证入口
 
@@ -134,10 +145,12 @@ sequenceDiagram
 | `modules/core/src/com/intellij/ide/bookmark/context/BookmarkContextProvider.kt` | 复用原平台上下文协议的升级适配器 |
 | `modules/core/src/com/intellij/ide/bookmark/BookmarkWorkspaceStore.kt` | workspace.xml 中的阅读路线和保存视图；阅读状态另随原上下文保存 |
 | `modules/core/src/com/intellij/ide/bookmark/BookmarkHealth.kt` | 只读巡检、候选定位及保留稳定 ID 的带备份修复 |
+| `modules/core/src/com/intellij/ide/bookmark/BookmarkRelations.kt` | 关联图严格校验、去重、复制与增删 |
+| `modules/core/src/com/intellij/ide/bookmark/BookmarkImpact.kt` | 文件级内容复核、快照哈希与状态 |
 | `tools/bookmarks_store.py` | AI 的 JSON 导出、校验、原子写入和归档编辑 |
 | `tests/test_bookmarks_store.py` | 修改范围、并发版本、备份和归档隔离检查 |
 | `tests/runtime/BookmarkSmokeStarter.java` | 原版上下文链路及实际 IDE 序列化验证 |
 
 原平台链路见固定上游版本的 [BranchContextTracker](https://github.com/JetBrains/intellij-community/blob/idea/262.11879.100/platform/tasks-platform-impl/src/com/intellij/tasks/context/BranchContextTracker.java)、[WorkingContextManager](https://github.com/JetBrains/intellij-community/blob/idea/262.11879.100/platform/tasks-platform-impl/src/com/intellij/tasks/context/WorkingContextManager.java) 和本工程保留的 [原书签适配器](../official/platform/tasks-platform-impl/tasks.impl.bookmarks/src/BookmarkContextProvider.java)。AI 操作方法见 [AI 整理指南](AI_BOOKMARKS.md)。
 
-从 `.9` 开始，项目个人组件 `BookmarksWorkspace` 在 `workspace.xml` 保存视图条件及阅读路线。启用随分支恢复时，上下文中的 `bookmarks` 元素还会保存 `BookmarkReadingState`，与 `ManagerState` 并列；旧上下文缺少该元素时恢复为空进度。保存视图保持项目范围，不随分支覆盖。上述状态不扩展格式 2、不进入书签 JSON，详细边界见 [工作流说明](WORKFLOWS.md)。
+从 `.9` 开始，项目个人组件 `BookmarksWorkspace` 在 `workspace.xml` 保存视图条件及阅读路线。启用随分支恢复时，上下文中的 `bookmarks` 元素还会保存 `BookmarkReadingState`，与 `ManagerState` 并列；旧上下文缺少该元素时恢复为空进度。保存视图保持项目范围，不随分支覆盖。`.10` 在同一阅读状态中加入 `reviews` 和按哈希去重的完整源码 `sources`；它们只保存在个人配置及原分支上下文中，不进入书签 JSON 或 Markdown 分享。关联表则属于格式 3 的公开书签状态。详细边界见 [工作流说明](WORKFLOWS.md)。
