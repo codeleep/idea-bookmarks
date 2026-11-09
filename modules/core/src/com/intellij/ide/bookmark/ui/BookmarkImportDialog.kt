@@ -53,7 +53,8 @@ class BookmarkImportDialog(private val project: Project, private val manager: Bo
   private fun refresh() {
     plan = BookmarkExchange.plan(current, incoming, mode.selectedIndex == 1, conflict.selectedIndex == 1)
     conflict.isEnabled = mode.selectedIndex == 0
-    summary.text = message("exchange.preview.summary", plan.state.groups.size, plan.state.bookmarks.size, plan.descriptionConflicts)
+    summary.text = message("exchange.preview.summary", plan.state.groups.size, plan.state.bookmarks.size,
+      plan.descriptionConflicts + plan.relationConflicts, plan.state.relations.size)
     changes.text = (notices + plan.changes).joinToString("\n")
     after.text = BookmarkExchange.toJson(plan.state, java.nio.file.Path.of(project.basePath!!))
     diff.setRequest(SimpleDiffRequest(message("exchange.diff"),

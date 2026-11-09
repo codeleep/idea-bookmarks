@@ -15,7 +15,7 @@ object MarkdownDescriptions {
     val flavour = GFMFlavourDescriptor()
     val tree = MarkdownParser(flavour).buildMarkdownTreeFromString(markdown)
     val html = HtmlGenerator(markdown, tree, flavour).generateHtml()
-    return Jsoup.clean(html, Safelist.relaxed().removeTags("img").addTags("del", "s"))
+    return Jsoup.clean(html, Safelist.relaxed().removeTags("img").addTags("del", "s").addProtocols("a", "href", "bookmark"))
   }
 
   @JvmStatic

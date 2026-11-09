@@ -2,11 +2,11 @@
 
 ## 1. 任务约定
 
-本指南适用于 `262.11879.100.4` 及之后使用格式 2 的工程。AI 应先阅读 [存储格式](STORAGE.md)，再通过 `tools/bookmarks_store.py` 导出 JSON、整理、校验并写回。JSON 是工具实际支持的编辑格式，IDE 与分支上下文最终仍使用新结构的 XML。
+本指南以插件 `262.11879.100.10` 的格式 3 为准，并兼容读取格式 2。AI 应先阅读 [存储格式](STORAGE.md)，再通过 `tools/bookmarks_store.py` 导出 JSON、整理、校验并写回。JSON 是工具实际支持的编辑格式，IDE 与分支上下文最终仍使用新结构的 XML。
 
-持续更新的指南以仓库 `main` 为准；旧 `codex/bookmarks-standalone` 分支仅保留历史。这里的离线工具可用于已安装的 `.6`，无需升级或放宽插件的锚点保护。
+持续更新的指南以仓库 `main` 为准；旧 `codex/bookmarks-standalone` 分支仅保留历史。维护格式 2 的旧项目时，工具保留导出版本；添加关系必须先升级到 `.10` 并采用格式 3。格式 3 必须使用当前工具，不能交给仅支持格式 2 的旧脚本写回。插件的严格锚点保护保持原样。
 
-`.9` 新增 IDE 内的巡检与确认修复，可在不关闭项目的情况下通过插件界面修复当前上下文；本指南的离线写回仍须关闭目标项目。阅读路线和保存视图由 IDE 的个人状态维护，不向格式 2 JSON 添加字段。编辑分支归档时，只替换目标 `ManagerState`，保留同级的 `BookmarkReadingState` 及其他元素；原工具沿用这一保留方式。详见 [巡检、阅读路线与保存视图](WORKFLOWS.md)。
+`.9` 新增 IDE 内的巡检与确认修复，可在不关闭项目的情况下通过插件界面修复当前上下文；本指南的离线写回仍须关闭目标项目。阅读路线、复核基线与保存视图由 IDE 个人状态维护，不进入书签 JSON。编辑分支归档时，只替换目标 `ManagerState`，保留同级的 `BookmarkReadingState` 及其他元素；`BookmarkReadingState` 内的路线、复核记录和去重源码快照也必须原样保留，不因为整理描述而重置基线。详见 [书签工作台、巡检与保存视图](WORKFLOWS.md)。
 
 开始整理前记录以下信息。
 
@@ -126,6 +126,24 @@ assert attributes["lineText"] == lines[line]  # 精确比较，不清理空白
 
 在 JSON 中修改 `descriptionMarkdown`，由 JSON 编码器处理换行和引号。不要直接拼接 XML 转义字符，不把同一描述复制到各组，不为每个组创建一条相同位置的书签。
 
+### 4.1. 关系与内部链接
+
+新增书签仍复用稳定 ID；关联保存在格式 3 的顶层 `relations`，与分组引用分开管理。现有关系默认全部保留，不根据组名推断并重建关系。
+
+| 字段／约束 | AI 操作规则 |
+|---|---|
+| `id` | 新关系使用 UUID；编辑关系保留 ID |
+| `sourceId` / `targetId` | 引用当前 JSON 已有且不同的书签 ID |
+| `kind` | `CALLS` 调用、`IMPLEMENTS` 实现、`DESIGN` 设计依据、`RELATED` 双向相关 |
+| `note` | 给出源码依据和关系说明；未知或推测关系明确标注 |
+| 去重 | 相同起点、终点、类型只保留一条；`RELATED` 反向也算重复 |
+| 环 | 关系图允许环；分组树仍禁止环 |
+| 删除／归并 | 删除最后引用时删除相连关系；归并时重映射端点并清理自关联及重复边 |
+
+需要可点击交叉引用时，在描述里写 `[阅读下一步](bookmark://目标ID)`。ID 含中文或保留字符时应使用 URI 编码；普通 UUID 可直接使用。IDE 合并导入时会重映射采用的导入描述中的链接；离线手动归并 ID 时，AI 也必须更新这些内部链接。目标未包含在分享范围内的链接不会自动补齐目标。
+
+关系和说明随 JSON 分享，复核基线保持个人状态。AI 不能通过编辑 `BookmarkReadingState` 把未经人工确认的源码静默设为已复核。
+
 ## 5. 当前项目：导出、校验、写回
 
 下面命令在本插件源码仓库执行。目标项目先在 IDEA 中保存并关闭；路径替换为实际绝对路径。
@@ -138,26 +156,28 @@ python3 tools/bookmarks_store.py export \
   --out "/临时目录/bookmarks-plan.json"
 ```
 
-导出的 JSON 包含 `formatVersion`、`bookmarks`、`groups` 和 `_source`。`_source` 记录源文件路径、SHA-256、项目路径、Git 分支与提交号。**保留 `_source` 原值**，它用于拒绝过期计划和错误项目写入。
+导出的 JSON 包含 `formatVersion`、`bookmarks`、`groups`、格式 3 的 `relations` 和 `_source`。`_source` 记录源文件路径、SHA-256、项目路径、Git 分支与提交号。**保留 `_source` 原值**，它用于拒绝过期计划和错误项目写入。
 
-一条书签被两个组引用时，核心结构如下。实际操作应修改导出文件，保留工具生成的 `_source`，不要把此片段当成可直接写回的完整文件。
+下面的格式 3 示例保留一个书签的跨组引用，并连接另一书签。实际操作应修改导出文件，保留工具生成的 `_source`，不要把此片段当成可直接写回的完整文件。`lineText` 在示例中省略，实际定位仍须精确核验。
 
 ```json
 {
-  "formatVersion": 2,
-  "bookmarks": [{
-    "id": "bookmark-1",
-    "provider": "com.intellij.ide.bookmark.providers.LineBookmarkProvider",
-    "attributes": {"url": "file://$PROJECT_DIR$/src/Reader.java", "line": "0"},
-    "type": "DEFAULT",
-    "descriptionMarkdown": "读取入口\n\n负责读取与检查点提交。"
-  }],
+  "formatVersion": 3,
+  "bookmarks": [
+    {"id":"bookmark-1","provider":"com.intellij.ide.bookmark.providers.LineBookmarkProvider","attributes":{"url":"file://$PROJECT_DIR$/src/Reader.java","line":"0"},"type":"DEFAULT","descriptionMarkdown":"读取入口\n\n[查看下一阶段](bookmark://bookmark-2)"},
+    {"id":"bookmark-2","provider":"com.intellij.ide.bookmark.providers.LineBookmarkProvider","attributes":{"url":"file://$PROJECT_DIR$/src/Reader.java","line":"10"},"type":"DEFAULT","descriptionMarkdown":"处理阶段"}
+  ],
   "groups": [
-    {"id": "root", "parentId": null, "name": "同步链路", "isDefault": true, "bookmarkIds": ["bookmark-1"]},
-    {"id": "child", "parentId": "root", "name": "读取入口", "isDefault": false, "bookmarkIds": ["bookmark-1"]}
+    {"id":"root","parentId":null,"name":"同步链路","isDefault":true,"bookmarkIds":["bookmark-1","bookmark-2"]},
+    {"id":"child","parentId":"root","name":"读取入口","isDefault":false,"bookmarkIds":["bookmark-1"]}
+  ],
+  "relations": [
+    {"id":"edge-1","sourceId":"bookmark-1","targetId":"bookmark-2","kind":"CALLS","note":"读取入口调用处理阶段；按目标提交核验。"}
   ]
 }
 ```
+
+格式 2 导出继续保留 `formatVersion: 2`，不得添加 `relations` 字段。需要使用关系时，优先在新版插件中保存升级；手工升级计划必须显式改为 3 并加入 `relations`，保留原书签／分组 ID 与最新 `_source`。
 
 编辑后先校验，再写回。`--project-closed` 表示执行者已核实目标项目关闭，它不会自动关闭 IDE。
 
@@ -192,7 +212,7 @@ python3 tools/bookmarks_store.py export \
   --out "/临时目录/branch-bookmarks.json"
 ```
 
-按目标分支的源码核对定位，保留导出文件的 `_source`。旧归档若还没有格式 2，先在新版 IDEA 插件中恢复、保存该上下文；工具会拒绝直接改写旧格式。
+按目标分支的源码核对定位，保留导出文件的 `_source`。旧归档若还没有格式 2 或 3，先在新版 IDEA 插件中恢复、保存该上下文；工具会拒绝直接改写旧格式。
 
 关闭 IDEA 后执行以下命令。
 
@@ -223,10 +243,10 @@ Git 分支改名后，原机制不会自动把旧上下文重命名；先保留�
 | 动作 | AI 应修改的内容 |
 |---|---|
 | 从一个组移除 | 只删该组的引用；其他组、描述保留 |
-| 移除最后一个引用 | 同时删除书签表中的记录，效果是彻底删除 |
-| 彻底删除书签 | 删除书签记录及所有分组中的引用 |
+| 移除最后一个引用 | 同时删除书签记录及相连关系，效果是彻底删除 |
+| 彻底删除书签 | 删除书签记录、所有分组引用和相连关系 |
 | 删除分组子树 | 删除全部后代组；只删除失去所有引用的书签记录 |
-| 归并重复书签 | 保留一个 ID、合并有效描述、替换全部引用，再删除冗余记录 |
+| 归并重复书签 | 保留一个 ID、合并有效描述、替换全部引用及关系端点，更新内部链接，再删除冗余记录 |
 
 整理完成后输出目标项目、分支或归档项、核验提交、变更数量、保留的共享引用、备份位置及验证结果。不能只报告“JSON 格式正确”；至少复核实际代码位置，并在 IDE 恢复后确认树形结构与 Markdown。
 
@@ -234,7 +254,7 @@ Git 分支改名后，原机制不会自动把旧上下文重命名；先保留�
 
 | 层次 | 必须确认 |
 |---|---|
-| 结构 | JSON、ID、层级、引用、默认组和快捷标记有效 |
+| 结构 | JSON、ID、层级、引用、关系端点／类型／去重、默认组和快捷标记有效 |
 | 源码定位 | 文件存在、0 起始行号正确；提供的 `lineText` 与完整源码行逐字相等；报告已查数量及跳过范围 |
 | IDEA 恢复与导航 | 选取有缩进、Tab、尾空白或中文的代表书签，确认没有整行置灰，双击或回车能打开正确文件并落到目标行；复核共享描述与引用 |
 
@@ -245,7 +265,9 @@ Git 分支改名后，原机制不会自动把旧上下文重命名；先保留�
 ```text
 按 docs/AI_BOOKMARKS.md 和 docs/STORAGE.md 整理目标项目的书签。
 先确认项目/worktree、Git 分支、提交号和写入范围，读取现有 ID、层级、描述与引用。
-基于目标分支源码整理业务主题和阅读链路，复用 ID，使用多组引用，保留有效 Markdown。
+基于目标分支源码整理业务主题和阅读链路，复用 ID，使用多组引用，保留有效 Markdown 和关联。
+格式 3 的 relations 随书签管理；归并 ID 时同步更新端点及 bookmark:// 链接。
+保留个人阅读路线、进度、复核基线和去重源码快照，不伪造已复核状态。
 line 从 0 开始；lineText 可省略，提供时必须是去掉换行符后的完整源码原文。
 保留所有行首、行尾空格和 Tab，不能使用 strip/lstrip/rstrip 生成或比较锚点。
 说明具体变更；通过 bookmarks_store.py 导出、校验、备份并原子写回。
@@ -257,4 +279,4 @@ line 从 0 开始；lineText 可省略，提供时必须是去掉换行符后的
 
 ## 8. IDE 内导入导出
 
-插件 `.7` 起可以在项目打开时通过工具栏或右键菜单导入、导出版本 2 的 JSON，并预览合并差异。它与本指南的离线源文件写回流程用途不同；可移植 JSON、`_source` 元数据和分支范围的具体边界见 [导入导出说明](IMPORT_EXPORT.md)。离线 `apply` 的关闭项目与源校验要求保持不变。
+插件 `.7` 起可以在项目打开时通过工具栏或右键菜单导入、导出 JSON；`.10` 使用格式 3 并支持格式 2 输入，导入前可预览合并差异。它与本指南的离线源文件写回流程用途不同；可移植 JSON、`_source` 元数据和分支范围的具体边界见 [导入导出说明](IMPORT_EXPORT.md)。离线 `apply` 的关闭项目与源校验要求保持不变。

@@ -13,7 +13,9 @@ import javax.swing.JLabel
 import javax.swing.JPanel
 
 internal class MarkdownDescriptionPanel(private val project: Project) : JPanel(BorderLayout()) {
-  private val preview = markdownPane()
+  private val preview = markdownPane { id ->
+    (com.intellij.ide.bookmark.BookmarksManager.getInstance(project) as? com.intellij.ide.bookmark.BookmarksManagerImpl)?.let { BookmarkNavigation.locate(project, it, id) }
+  }
   private val edit = JButton(message("description.edit"))
   private var node: BookmarkNode<*>? = null
 

@@ -15,7 +15,8 @@ import uuid
 import xml.etree.ElementTree as ET
 import zipfile
 
-VERSION = 2
+VERSION = 3
+RELATION_KINDS = {"CALLS", "IMPLEMENTS", "DESIGN", "RELATED"}
 LINE_PROVIDER = "com.intellij.ide.bookmark.providers.LineBookmarkProvider"
 TYPES = {"DEFAULT", *(f"LETTER_{c}" for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"), *(f"DIGIT_{n}" for n in range(10))}
 
@@ -42,8 +43,9 @@ def read_json(path):
 
 
 def validate(model):
-    require(isinstance(model, dict) and set(model) <= {"formatVersion", "bookmarks", "groups", "_source"}, "Unknown document fields")
-    require(type(model.get("formatVersion")) is int and model["formatVersion"] == VERSION, "formatVersion must be 2")
+    require(isinstance(model, dict) and set(model) <= {"formatVersion", "bookmarks", "groups", "relations", "_source"}, "Unknown document fields")
+    require(type(model.get("formatVersion")) is int and model["formatVersion"] in (2, VERSION), "formatVersion must be 2 or 3")
+    require(model["formatVersion"] == 3 or "relations" not in model, "Relations require formatVersion 3")
     records, groups = model.get("bookmarks"), model.get("groups")
     require(isinstance(records, list) and isinstance(groups, list), "bookmarks and groups must be arrays")
     ids, locations, mnemonics = set(), set(), set()
@@ -92,6 +94,19 @@ def validate(model):
             require(parent in by_id and parent not in visited, "Missing parent or group cycle")
             visited.add(parent)
             parent = by_id[parent]["parentId"]
+    relations = model.get("relations", [])
+    require(isinstance(relations, list) and len(relations) <= 50000, "relations must be an array with at most 50000 entries")
+    edge_ids, edge_keys = set(), set()
+    for edge in relations:
+        require(isinstance(edge, dict) and set(edge) == {"id", "sourceId", "targetId", "kind", "note"}, "Invalid relation fields")
+        require(isinstance(edge["id"], str) and edge["id"].strip() and edge["id"] not in edge_ids, "Relation IDs must be nonempty and unique")
+        require(isinstance(edge["sourceId"], str) and isinstance(edge["targetId"], str) and edge["sourceId"] in ids and edge["targetId"] in ids and edge["sourceId"] != edge["targetId"], "Relation endpoints must be distinct existing bookmarks")
+        require(isinstance(edge["kind"], str) and edge["kind"] in RELATION_KINDS, "Invalid relation kind")
+        require(isinstance(edge["note"], str) and len(edge["note"].encode("utf-16-le")) <= 20000, "Invalid relation note")
+        endpoints = sorted((edge["sourceId"], edge["targetId"])) if edge["kind"] == "RELATED" else (edge["sourceId"], edge["targetId"])
+        key = (edge["kind"], *endpoints)
+        require(key not in edge_keys, "Duplicate bookmark relation")
+        edge_ids.add(edge["id"]); edge_keys.add(key)
     return model
 
 
@@ -206,8 +221,9 @@ def elements(node, name, tag):
 
 def parse_state(node):
     require(node is not None, "BookmarksManager / ManagerState not found")
-    require(option(node, "formatVersion") == "2", "Upgrade and save with plugin .4 or newer before using this tool")
-    require(all(child.tag == "option" and child.get("name") in {"formatVersion", "bookmarks", "groups"} for child in node), "Unknown stored state fields; use a matching tool version")
+    version = option(node, "formatVersion")
+    require(version in ("2", "3"), "Upgrade and save with plugin .4 or newer before using this tool")
+    require(all(child.tag == "option" and child.get("name") in {"formatVersion", "bookmarks", "groups", "relations"} for child in node), "Unknown stored state fields; use a matching tool version")
     records = []
     for saved in elements(node, "bookmarks", "BookmarkState"):
         require(all(child.tag == "attributes" or (child.tag == "option" and child.get("name") in {"id", "provider", "type", "description"}) for child in saved), "Unknown stored bookmark fields")
@@ -221,7 +237,20 @@ def parse_state(node):
         groups.append({"id": option(saved, "id"), "parentId": option(saved, "parentId"),
                        "name": option(saved, "name", ""), "isDefault": option(saved, "default", option(saved, "isDefault", "false")) == "true",
                        "bookmarkIds": [entry.get("value") for entry in elements(saved, "bookmarkIds", "option")]})
-    return validate({"formatVersion": VERSION, "bookmarks": records, "groups": groups})
+    result = {"formatVersion": int(version), "bookmarks": records, "groups": groups}
+    if version == "3":
+        result["relations"] = []
+        parent = collection(node, "relations")
+        require(parent is None or all(child.tag == "BookmarkRelation" for child in parent), "Unknown stored relation element")
+        for saved in elements(node, "relations", "BookmarkRelation"):
+            require(all(child.tag == "option" and child.get("name") in {"id", "sourceId", "targetId", "kind", "note"} for child in saved), "Unknown stored relation fields")
+            result["relations"].append({"id": option(saved, "id", ""), "sourceId": option(saved, "sourceId", ""), "targetId": option(saved, "targetId", ""), "kind": option(saved, "kind", "RELATED"), "note": option(saved, "note", "")})
+    else:
+        # The upgraded IDE serializer may include its new empty property in a
+        # format-2 migration backup. Never discard a nonempty old collection.
+        parent = collection(node, "relations")
+        require(parent is None or len(parent) == 0, "Relations require formatVersion 3")
+    return validate(result)
 
 
 def write_state(model, tag):
@@ -230,7 +259,7 @@ def write_state(model, tag):
     def put(parent, name, value):
         if value is not None:
             ET.SubElement(parent, "option", name=name, value=str(value).lower() if type(value) is bool else str(value))
-    put(node, "formatVersion", VERSION)
+    put(node, "formatVersion", model["formatVersion"])
     records = ET.SubElement(node, "option", name="bookmarks")
     for record in model["bookmarks"]:
         saved = ET.SubElement(records, "BookmarkState")
@@ -250,6 +279,12 @@ def write_state(model, tag):
         refs = ET.SubElement(saved, "option", name="bookmarkIds")
         for ident in group["bookmarkIds"]:
             ET.SubElement(refs, "option", value=ident)
+    if model["formatVersion"] == 3:
+        relations = ET.SubElement(node, "option", name="relations")
+        for edge in model.get("relations", []):
+            saved = ET.SubElement(relations, "BookmarkRelation")
+            for name in ("id", "sourceId", "targetId", "kind", "note"):
+                put(saved, name, edge[name])
     return node
 
 

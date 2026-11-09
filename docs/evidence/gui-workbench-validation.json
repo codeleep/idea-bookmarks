@@ -1,0 +1,73 @@
+{
+  "result": "PASS",
+  "date": "2026-11-09",
+  "timezone": "Asia/Shanghai",
+  "sdkVersion": "2026.2.4",
+  "sdkBuild": "262.11879.100",
+  "pluginVersion": "262.11879.100.10",
+  "archiveSha256": "abda31d20e41afec5ef9d5eee61cdc60393b9a3de7055efc1c70042bacd6c9b7",
+  "installation": "isolated user plugins directory",
+  "ideInstallationModified": false,
+  "businessProjectsModified": false,
+  "phases": [
+    {
+      "archiveSha256": "4093b8e59f18330ec02dfbf26f3c2cd6f1345df7b674a03eaadb77e91143fb63",
+      "checks": [
+        "native right-docked workbench beside source editor",
+        "existing route deduplicates shared records and retains progress",
+        "description bookmark link navigates to line 3",
+        "explicit review baseline and automatic pending-review badge after fixture edit",
+        "native read-only Diff shows baseline and changed field",
+        "explicit review clears pending badge",
+        "create typed relation with Chinese note",
+        "reverse relation view and code navigation",
+        "native JSON export retains 4 records, 3 groups and 1 relation without private sources"
+      ]
+    },
+    {
+      "archiveSha256": "abda31d20e41afec5ef9d5eee61cdc60393b9a3de7055efc1c70042bacd6c9b7",
+      "checks": [
+        "all four installed JARs match final ZIP bytes",
+        "process restart restores docked workbench",
+        "route order and 1/2 progress retained",
+        "route full-text search and filtered reorder guard",
+        "route navigation to exact line 3",
+        "baseline restores CURRENT with 0 pending and 3 unreviewed",
+        "relation ID, endpoints, direction and Chinese note restored",
+        "relation target full-text search",
+        "editing relation note preserves stable ID",
+        "relation navigation to line 3 with normal bookmark presentation",
+        "clean shutdown saves records, references, relation and baseline"
+      ]
+    }
+  ],
+  "storage": {
+    "formatVersion": 3,
+    "bookmarks": 4,
+    "groups": 3,
+    "relations": 1,
+    "references": 6,
+    "originalIdsDescriptionsAndMembershipsRetained": true,
+    "format2BackupMatchesOriginalAfterMacroExpansion": true,
+    "privateReviews": 1,
+    "deduplicatedSnapshots": 1,
+    "snapshotMatchesFinalFixtureSource": true,
+    "exactLocations": {
+      "checkedLineBookmarks": 2,
+      "checkedTextAnchors": 2,
+      "lineBookmarksWithoutText": 0,
+      "skippedFileBookmarks": 2,
+      "skippedOtherProviders": 0,
+      "skippedNonLocalBookmarks": 0,
+      "source": "working-tree"
+    }
+  },
+  "finalGuiProcessErrors": 0,
+  "initialExperimentIssue": "A whole-file paste/undo experiment triggered the existing strict duplicate-location save rejection. The previous canonical file was retained and compared to the GUI export. Only the closed generated test source was reset before final verification. This transient-state reproduction is not claimed fixed.",
+  "boundaries": [
+    "File-level comparison, not semantic method impact analysis.",
+    "Only generated files under build/workbench-ui were edited; no business sources or user bookmarks were changed.",
+    "Workflow GUI and final-package restart checks are recorded separately; final native report covers 360 checks.",
+    "No tag or Release was created."
+  ]
+}

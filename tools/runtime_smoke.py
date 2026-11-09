@@ -83,7 +83,7 @@ def smoke(sdk, plugin_archive=None, anchors_only=False):
             os.pathsep.join(map(str, classpath)), "-d", str(sandbox / "helper-classes"),
             str(ROOT / "tests/runtime/AnchorSmokeStarter.java")]
     if not anchors_only:
-        args.extend(str(ROOT / "tests/runtime" / name) for name in ("BookmarkSmokeStarter.java", "BreakpointActionsSmoke.java", "BookmarkWorkflowsSmoke.java"))
+        args.extend(str(ROOT / "tests/runtime" / name) for name in ("BookmarkSmokeStarter.java", "BreakpointActionsSmoke.java", "BookmarkWorkflowsSmoke.java", "BookmarkWorkbenchSmoke.java"))
     arguments = sandbox / "javac.args"
     arguments.write_text("\n".join(json.dumps(value, ensure_ascii=False) for value in args))
     subprocess.run([str(java_home / "bin/javac"), "@" + str(arguments)], check=True)

@@ -46,6 +46,7 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
   private val notifier = ModificationNotifier(project)
   private val allBookmarks = mutableMapOf<Bookmark, InManagerInfo>()
   private val allGroups = mutableListOf<Group>()
+  private val relations = mutableListOf<BookmarkRelation>()
   private val pendingRestores = AtomicInteger()
   @Volatile private var restoreGeneration = 0L
   private var restoringSnapshot: ManagerState? = null
@@ -114,7 +115,10 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
   override fun getState(): ManagerState = synchronized(notifier) {
     if (isRestoringBookmarks()) restoringSnapshot?.let { return@synchronized it }
     restoringSnapshot = null
-    BookmarkStorageFormat.normalize(ManagerState().apply { orderedGroups().mapTo(groups) { it.getState() } })
+    BookmarkStorageFormat.normalize(ManagerState().apply { orderedGroups().mapTo(groups) { it.getState() } }).also { result ->
+      val ids = result.bookmarks.map { it.id }.toSet()
+      relations.filter { it.sourceId in ids && it.targetId in ids }.mapTo(result.relations, BookmarkStorageFormat::copyRelation)
+    }
   }
 
   override fun loadState(state: ManagerState) {
@@ -123,6 +127,7 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
     synchronized(notifier) {
       restoreGeneration++
       remove()
+      resolved.relations.mapTo(relations, BookmarkStorageFormat::copyRelation)
       restoringSnapshot = state
       val loaded = resolved.groups.map { saved ->
         val id = saved.id?.takeIf { it.isNotBlank() && allGroups.none { group -> group.id == it } } ?: UUID.randomUUID().toString()
@@ -415,7 +420,10 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
     val info = allBookmarks[bookmark] ?: return null
     if (!info.groups.remove(group)) return null
     val removed = info.groups.isEmpty()
-    if (removed) allBookmarks.remove(bookmark)
+    if (removed) {
+      allBookmarks.remove(bookmark)
+      relations.removeIf { it.sourceId == info.id || it.targetId == info.id }
+    }
     val result = info to group.removeInfo(bookmark)
     info.bookmarkRemoved(group, removed)
     return result
@@ -425,6 +433,7 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
     restoreGeneration++
     restoringSnapshot = null
     unresolvedBookmarks.clear()
+    relations.clear()
     while (allGroups.isNotEmpty()) allGroups[0].remove()
   }
 
@@ -542,6 +551,24 @@ class BookmarksManagerImpl @ApiStatus.Internal constructor(private val project: 
       oldInfo.bookmarkRemoved(group, !oldIterator.hasNext())
     }
     allBookmarks.remove(oldInfo.bookmark)
+    val remap = mapOf(oldInfo.id to existingInfo.id)
+    allBookmarks.values.forEach { info ->
+      val description = info.description ?: return@forEach
+      val updated = BookmarkLinks.remap(description, remap)
+      if (updated != description) info.groups.firstOrNull()?.setDescription(info.bookmark, updated)
+    }
+    relations.forEach {
+      if (it.sourceId == oldInfo.id) it.sourceId = existingInfo.id
+      if (it.targetId == oldInfo.id) it.targetId = existingInfo.id
+    }
+    val unique = linkedMapOf<List<String>, BookmarkRelation>()
+    relations.filter { it.sourceId != it.targetId }.forEach { edge ->
+      val previous = unique.putIfAbsent(BookmarkRelations.key(edge), edge)
+      if (previous != null && edge.note.isNotEmpty() && edge.note != previous.note) {
+        previous.note = listOf(previous.note, edge.note).filter { it.isNotEmpty() }.distinct().joinToString("\n\n---\n\n").take(10000)
+      }
+    }
+    relations.clear(); relations.addAll(unique.values)
     existingInfo.groups.forEach { notifier.bookmarkChanged(it, existingInfo.bookmark) }
     return true
   }

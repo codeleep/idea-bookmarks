@@ -35,6 +35,20 @@ class BookmarkRoute {
 
 class BookmarkReadingState {
   @get:XCollection val routes: MutableList<BookmarkRoute> = mutableListOf()
+  @get:XCollection val reviews: MutableList<BookmarkReview> = mutableListOf()
+  @get:XCollection val sources: MutableList<BookmarkSourceSnapshot> = mutableListOf()
+}
+
+class BookmarkReview {
+  var bookmarkId: String = ""
+  var url: String = ""
+  var snapshotId: String = ""
+  var descriptionHash: String = ""
+}
+
+class BookmarkSourceSnapshot {
+  var id: String = ""
+  var text: String = ""
 }
 
 class BookmarkWorkspaceData {
@@ -45,12 +59,45 @@ class BookmarkWorkspaceData {
 /** Personal views live in workspace.xml; reading state is additionally carried by the original branch context. */
 @Service(Service.Level.PROJECT)
 @State(name = "BookmarksWorkspace", storages = [Storage(StoragePathMacros.WORKSPACE_FILE)])
-class BookmarkWorkspaceStore : PersistentStateComponent<BookmarkWorkspaceData> {
+class BookmarkWorkspaceStore(private val project: Project) : PersistentStateComponent<BookmarkWorkspaceData> {
   private var data = BookmarkWorkspaceData()
+  private var reviewRevision = 0L
   @Synchronized override fun getState(): BookmarkWorkspaceData = copy(data)
-  @Synchronized override fun loadState(state: BookmarkWorkspaceData) { data = copy(state) }
+  @Synchronized override fun loadState(state: BookmarkWorkspaceData) { data = copy(state); reviewRevision++ }
   @Synchronized fun readingState(): BookmarkReadingState = copy(data.reading)
-  @Synchronized fun restoreReading(state: BookmarkReadingState) { data.reading = copy(state) }
+  @Synchronized fun restoreReading(state: BookmarkReadingState) { data.reading = copy(state); reviewRevision++ }
+  @Synchronized fun reviewRevision(): Long = reviewRevision
+
+  @Synchronized fun markReviewed(state: ManagerState, captures: List<BookmarkImpact.Capture>, expectedRevision: Long) {
+    check(reviewRevision == expectedRevision) { "分支或复核基线已变化，请刷新后重试" }
+    val manager = BookmarksManager.getInstance(project) as? BookmarksManagerImpl ?: error("书签服务不可用")
+    check(!manager.isRestoringBookmarks() && BookmarkExchange.toJson(manager.captureForExchange(), null) == BookmarkExchange.toJson(state, null)) { "书签上下文已变化，请重新复核" }
+    check(com.intellij.openapi.application.ReadAction.compute<Boolean, RuntimeException> { BookmarkImpact.stillCurrent(project, captures) }) { "源码已变化，请重新查看差异" }
+    val records = state.bookmarks.associateBy { it.id }
+    require(captures.isNotEmpty() && captures.map { it.bookmarkId }.distinct().size == captures.size) { "请选择需要复核的书签" }
+    val updated = copy(data.reading)
+    captures.forEach { capture ->
+      require(capture.bookmarkId in records && capture.text.length <= BookmarkImpact.MAX_FILE_CHARS) { "书签不存在或文件过大" }
+      updated.reviews.removeIf { it.bookmarkId == capture.bookmarkId }
+      updated.reviews.add(BookmarkReview().also {
+        it.bookmarkId = capture.bookmarkId; it.url = capture.url; it.snapshotId = capture.hash
+        it.descriptionHash = BookmarkImpact.hash(records.getValue(capture.bookmarkId).description.orEmpty())
+      })
+      if (updated.sources.none { it.id == capture.hash }) updated.sources.add(BookmarkSourceSnapshot().also { it.id = capture.hash; it.text = capture.text })
+    }
+    updated.reviews.removeIf { it.bookmarkId !in records }
+    val hashes = updated.reviews.map { it.snapshotId }.toSet()
+    updated.sources.removeIf { it.id !in hashes }
+    require(updated.sources.sumOf { it.text.length.toLong() } <= BookmarkImpact.MAX_TOTAL_CHARS) { "复核快照容量已满，请先清除不再需要的基线" }
+    data.reading = updated; reviewRevision++
+  }
+
+  @Synchronized fun clearReviews(ids: Set<String>, expectedRevision: Long) {
+    check(reviewRevision == expectedRevision) { "分支或复核基线已变化，请刷新后重试" }
+    data.reading.reviews.removeIf { it.bookmarkId in ids }
+    val hashes = data.reading.reviews.map { it.snapshotId }.toSet()
+    data.reading.sources.removeIf { it.id !in hashes }; reviewRevision++
+  }
   @Synchronized fun views(): List<BookmarkSavedView> = data.views.map(::copy)
 
   @Synchronized fun saveView(name: String, filter: BookmarkFilter): BookmarkSavedView {
